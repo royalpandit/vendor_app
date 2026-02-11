@@ -20,4 +20,6 @@ class Endpoints {
   static const String amenities = '/api/amenity';
   static const states          = '/api/states';
   static const cities          = '/api/cities';
+  static const updateBookingStatus = '/api/bookings/update-status';
+
 }

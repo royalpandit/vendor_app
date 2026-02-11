@@ -14,14 +14,6 @@ class BookingScreen extends StatefulWidget {
   _BookingScreenState createState() => _BookingScreenState();
 }
 class _BookingScreenState extends State<BookingScreen> {
- /* @override
-  void initState() {
-    super.initState();
-    // Set the status bar color to match the gradient's top color
-    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-      statusBarColor: AppColors.lightPinkColor, // Set status bar icons to dark for better visibility
-    ));
-  }*/
 
   @override
   void initState() {
@@ -147,7 +139,7 @@ class _BookingScreenState extends State<BookingScreen> {
               itemBuilder: (context, index) {
                 final booking = authProvider.activeBookingsModels![index];
                 return _buildBookingCard(
-                  bookingId: '#BK-${booking.id}',
+                  bookingId:    booking.id,
                   clientName: booking.user.name,
                   service: booking.serviceName,
                   budget: booking.budget,
@@ -215,7 +207,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
   // Method to build the booking card
   Widget _buildBookingCard({
-    required String bookingId,
+    required int bookingId,
     required String clientName,
     required String service,
     required String budget,
@@ -245,7 +237,7 @@ class _BookingScreenState extends State<BookingScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  bookingId,
+                  '#BK-$bookingId',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 Container(
@@ -321,8 +313,12 @@ class _BookingScreenState extends State<BookingScreen> {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {
-                      // Handle action on button click
+                      if (status == "In Progress" || status == "confirmed") {
+                        _showCompleteBottomSheet(context, bookingId, clientName, service, budget, date, location, status);
+                      }
+
                     },
+
                     style: ElevatedButton.styleFrom(
                       backgroundColor: buttonColor,
                       shape: RoundedRectangleBorder(
@@ -351,357 +347,265 @@ class _BookingScreenState extends State<BookingScreen> {
       ),
     );
   }
-}
-
-/*
-class BookingScreen extends StatefulWidget {
-  final int currentIndex;
-  BookingScreen({required this.currentIndex});
-
-  @override
-  _BookingScreenState createState() => _BookingScreenState();
-}
-class _BookingScreenState extends State<BookingScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // Set the status bar color to match the gradient's top color
-    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-      statusBarColor: AppColors.lightPinkColor, // Set status bar icons to dark for better visibility
-    ));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor:  AppColors.lightGrey,
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(120), // Increased height for extra content
-        child: AppBar(
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          leading: null,
-          flexibleSpace: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.lightPinkColor,// Pink color at the top
-                  AppColors.lightGrey, // White color
-                ],
-                stops: [0.0, 0.8],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
+  void _showCompleteBottomSheet(
+      BuildContext context,
+      int bookingId,
+      String clientName,
+      String service,
+      String budget,
+      String date,
+      String location,
+      String status,
+      )
+  {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(25),
             ),
-            child: Padding(
-              padding: const EdgeInsets.only(top: 40, left: 16, right: 16), // Adjusted padding
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+
+              /// Drag line
+              Container(
+                width: 50,
+                height: 5,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+
+              /// Step Progress
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  // Welcome Text
-                  Text(
-                    'Welcome Back, Rajeeb',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                  SizedBox(height: 5), // Space between text and new title
+                  _stepItem("Start", true),
+                  _stepItem("In progress", true),
+                  _stepItem("Step 3", false),
+                ],
+              ),
 
-                  // New Title (Subtitle or Heading)
-                  Text(
-                    '8 new leads are waiting for you! 🔥',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.normal,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  SizedBox(height: 5), // Space between title and container
+              const SizedBox(height: 20),
 
-                  // Container (You can add any content here, such as a description or stats)
-                  Container(
-                    margin: EdgeInsets.only(bottom: 5),
-                    child: Row(
+              /// Booking Card Design (Screenshot 1 style)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.lightGrey,
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+
+                    /// Booking ID + Status
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Container for TextField with BoxShadow
-                        Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.withOpacity(0.2),
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.only(left: 16.0),
-                              child: TextField(
-                                decoration: InputDecoration(
-                                  hintText: 'Search for bookings',
-                                  hintStyle: TextStyle(color: Colors.grey),
-                                  prefixIcon: Icon(Icons.search, color: Colors.grey),
-                                  border: InputBorder.none,
-                                ),
-                              ),
-                            ),
+                        Text(
+                          '#BK-$bookingId',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        // Filter Icon (Separate on the right, without box shadow)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 16.0,left: 8.0),
-                          child: Image.asset(
-                            'assets/icons/search_icon.png', // Replace with your custom filter icon path
-                            width: 48,  // Adjust width as needed
-                            height: 48, // Adjust height as needed
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFAC57),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            status,
+                            style: const TextStyle(color: Colors.white),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          title: null, // Remove the default title, as we've custom-styled it
-        ),
-      ),
 
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Search Bar Section
+                    const SizedBox(height: 10),
 
-
-            // Bookings List
-            Expanded(
-              child: ListView(
-                children: [
-                  _buildBookingCard(
-                    bookingId: '#BK-2489',
-                    clientName: 'Rahul Mehta',
-                    service: 'Catering Service - 200 Guests',
-                    budget: '₹75,000',
-                    date: '15/09/2025',
-                    location: 'Gurgaon, Gurgaon',
-                    status: 'In Progress',
-                    buttonText: 'Mark as Complete',
-                    buttonColor: Color(0xFF14A38B), // Green
-                    buttonIcon: 'assets/icons/complete_icon.png', // Custom icon path
-                  ),
-                  _buildBookingCard(
-                    bookingId: '#BK-2490',
-                    clientName: 'Aditi Sharma',
-                    service: 'Wedding Decor - 150 Guests',
-                    budget: '₹120,000',
-                    date: '22/10/2025',
-                    location: 'Noida, Uttar Pradesh',
-                    status: 'Pending',
-                    buttonText: 'Start Booking',
-                    buttonColor: Color(0xFFFFAC57), // Yellow
-                    buttonIcon: 'assets/icons/complete_icon.png', // Custom icon path
-                  ),
-                  _buildBookingCard(
-                    bookingId: '#BK-2491',
-                    clientName: 'Sanjay Kumar',
-                    service: 'Corporate Event - 100 Guests',
-                    budget: '₹50,000',
-                    date: '05/11/2025',
-                    location: 'Delhi, Delhi',
-                    status: 'Completed',
-                    buttonText: 'View Details',
-                    buttonColor: Color(0xFF6D6E7A), // Light Grey
-                    buttonIcon: 'assets/icons/complete_icon.png', // Custom icon path
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: CustomBottomNavigation(currentIndex: 1), // Update the index for Bookings
-    );
-  }
-
-  // Method to build the booking card
-  Widget _buildBookingCard({
-    required String bookingId,
-    required String clientName,
-    required String service,
-    required String budget,
-    required String date,
-    required String location,
-    required String status,
-    required String buttonText,
-    required Color buttonColor,
-    required String buttonIcon,
-  }) {
-    return Card(
-      elevation: 5,
-      margin: EdgeInsets.symmetric(vertical: 10),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white, // White color for the container
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Booking ID and Status
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  bookingId,
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: status == 'In Progress'
-                        ? Colors.orange
-                        : status == 'Pending'
-                        ? Colors.red
-                        : Colors.blue,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    status,
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 8),
-
-            // Client Name and Budget in the same row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  clientName,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  'Budget',  // Budget value
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 8),
-
-            // Service and Date in the next row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  service,
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-                Text(
-                  '$budget',  // Budget value
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 8),
-
-            // Location info
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.calendar_today, color: Colors.grey, size: 16),
-                    SizedBox(width: 4),
+                    /// Name
                     Text(
-                      date,
-                      style: TextStyle(fontSize: 14, color: Colors.grey),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Icon(Icons.location_on, color: Colors.grey, size: 16),
-                    SizedBox(width: 4),
-                    Text(
-                      location,
-                      style: TextStyle(fontSize: 14, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            SizedBox(height: 16),
-            // Action Button (Mark as Complete, Start Booking, etc.)
-            Row(
-              children: [
-                // Message Icon
-                Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: Image.asset(
-                    'assets/icons/search_icon.png', // Custom icon for message
-                    width: 40,
-                    height: 40,
-                  ),
-                ),
-                // Expanded to make the button take full width
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // Handle action on button click
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF14A38B), // Button color (green)
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                      clientName,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
-                      padding: EdgeInsets.symmetric(vertical: 10), // Padding for button
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.max, // Make the Row take full width
-                      mainAxisAlignment: MainAxisAlignment.center, // Center the content
+
+                    const SizedBox(height: 5),
+
+                    /// Service
+                    Text(
+                      service,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+
+                    const SizedBox(height: 15),
+
+                    /// Date & Location
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Icon(Icons.check, size: 20, color: Colors.white), // Checkmark icon
-                        SizedBox(width: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
+                            const SizedBox(width: 5),
+                            Text(date, style: const TextStyle(color: Colors.grey)),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                            const SizedBox(width: 5),
+                            Text(location, style: const TextStyle(color: Colors.grey)),
+                          ],
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 15),
+
+                    /// Budget
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Budget",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         Text(
-                          'Mark as Complete',
-                          style: TextStyle(
-                            color: Colors.white, // Text color
-                            fontSize: 16,
+                          "₹$budget",
+                          style: const TextStyle(
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              /// Close Button
+              OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: const BorderSide(color: Colors.red),
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-              ],
-            )
-          ],
-        ),
-      ),
+                child: const Text("Close"),
+              ),
+
+              const SizedBox(height: 15),
+
+              /// Final Complete Button
+              ElevatedButton(
+                  onPressed: () async {
+                    final provider = context.read<AuthProvider>();
+
+                    Navigator.pop(context);
+
+                    final result = await provider.updateBookingStatus(
+                      bookingId: bookingId,
+                      action: "confirmed",   // confirm karna hai
+                    );
+
+                    if (result) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Booking marked as completed")),
+                      );
+
+                      // Refresh bookings
+                      final user = await TokenStorage.getUserData();
+                      if (user?.id != null) {
+                        provider.fetchActiveBookings(user!.id!);
+                      }
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(provider.message ?? "Failed")),
+                      );
+                    }
+                  },
+
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF14A38B),
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.check, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text(
+                      "Mark as Complete",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
     );
   }
+
+
 }
-*/
+
+
+Widget _stepItem(String title, bool isActive) {
+  return Column(
+    children: [
+      CircleAvatar(
+        radius: 14,
+        backgroundColor:
+        isActive ? Colors.pink : Colors.grey.shade300,
+        child: isActive
+            ? const Icon(Icons.check,
+            size: 14, color: Colors.white)
+            : null,
+      ),
+      const SizedBox(height: 6),
+      Text(
+        title,
+        style: TextStyle(
+          color: isActive ? Colors.pink : Colors.grey,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    ],
+  );
+}
 

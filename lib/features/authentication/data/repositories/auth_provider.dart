@@ -14,8 +14,10 @@ import 'package:vendor_app/features/authentication/data/repositories/auth_reposi
 import 'package:vendor_app/features/booking/data/models/resposne/active_booking_model.dart';
 import 'package:vendor_app/features/chat/data/model/resposen/conversation_chat_model.dart';
 import 'package:vendor_app/features/chat/data/model/resposen/inbox_response.dart';
+import 'package:vendor_app/features/home/data/models/request/update_booking_status_request.dart';
 import 'package:vendor_app/features/home/data/models/resposne/dashboard_response.dart';
 import 'package:vendor_app/features/home/data/models/resposne/new_lead.dart';
+import 'package:vendor_app/features/home/data/models/resposne/update_booking_status_response.dart';
 import 'package:vendor_app/features/profile/data/models/request/notification_settings_request.dart';
 import 'package:vendor_app/features/profile/data/models/request/service_add_request.dart';
 import 'package:vendor_app/features/profile/data/models/request/user_portfolio_request.dart';
@@ -584,6 +586,37 @@ class AuthProvider extends ChangeNotifier {
 
       case ApiFailure():
         cities = [];
+        message = res.message;
+        notifyListeners();
+        return false;
+    }
+  }
+  Future<bool> updateBookingStatus({
+    required int bookingId,
+    required String action, // approve | reject
+  }) async {
+
+    loading = true;
+    message = null;
+    notifyListeners();
+
+    final req = UpdateBookingStatusRequest(
+      bookingId: bookingId,
+      action: action,
+    );
+
+    final res = await _repo.updateBookingStatus(req);
+
+    loading = false;
+
+    switch (res) {
+      case ApiSuccess<BaseResponse<UpdateBookingStatusResponse>>():
+        message = res.data.message ??
+            'Booking status updated successfully';
+        notifyListeners();
+        return true;
+
+      case ApiFailure():
         message = res.message;
         notifyListeners();
         return false;

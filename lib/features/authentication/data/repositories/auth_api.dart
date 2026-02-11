@@ -17,8 +17,10 @@ import 'package:path/path.dart' as p;
 import 'package:vendor_app/features/booking/data/models/resposne/active_booking_model.dart';
 import 'package:vendor_app/features/chat/data/model/resposen/conversation_chat_model.dart';
 import 'package:vendor_app/features/chat/data/model/resposen/inbox_response.dart';
+import 'package:vendor_app/features/home/data/models/request/update_booking_status_request.dart';
 import 'package:vendor_app/features/home/data/models/resposne/dashboard_response.dart';
 import 'package:vendor_app/features/home/data/models/resposne/new_lead.dart';
+import 'package:vendor_app/features/home/data/models/resposne/update_booking_status_response.dart';
 import 'package:vendor_app/features/profile/data/models/request/notification_settings_request.dart';
 import 'package:vendor_app/features/profile/data/models/request/service_add_request.dart';
 import 'package:vendor_app/features/profile/data/models/request/user_portfolio_request.dart';
@@ -332,6 +334,22 @@ class AuthApi {
     return BaseResponse<CitiesData>.fromJson(decoded, (raw) {
       // raw == List
       return CitiesData.fromJson(raw);
+    });
+  }
+
+  Future<BaseResponse<UpdateBookingStatusResponse>>
+  updateBookingStatus(UpdateBookingStatusRequest req) async {
+
+    final res = await _dio.post(
+      Endpoints.updateBookingStatus,
+      data: req.toJson(),
+    );
+
+    final decoded = res.data;
+
+    return BaseResponse.fromJson(decoded, (json) {
+      return UpdateBookingStatusResponse.fromJson(
+          json as Map<String, dynamic>);
     });
   }
 

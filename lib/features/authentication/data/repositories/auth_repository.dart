@@ -16,8 +16,10 @@ import 'package:vendor_app/features/authentication/data/repositories/auth_api.da
 import 'package:vendor_app/features/booking/data/models/resposne/active_booking_model.dart';
 import 'package:vendor_app/features/chat/data/model/resposen/conversation_chat_model.dart';
 import 'package:vendor_app/features/chat/data/model/resposen/inbox_response.dart';
+import 'package:vendor_app/features/home/data/models/request/update_booking_status_request.dart';
 import 'package:vendor_app/features/home/data/models/resposne/dashboard_response.dart';
 import 'package:vendor_app/features/home/data/models/resposne/new_lead.dart';
+import 'package:vendor_app/features/home/data/models/resposne/update_booking_status_response.dart';
 import 'package:vendor_app/features/profile/data/models/request/notification_settings_request.dart';
 import 'package:vendor_app/features/profile/data/models/request/service_add_request.dart';
 import 'package:vendor_app/features/profile/data/models/request/user_portfolio_request.dart';
@@ -297,4 +299,17 @@ class AuthRepository {
       return ApiFailure(e.toString());
     }
   }
+  Future<ApiResult<BaseResponse<UpdateBookingStatusResponse>>>
+  updateBookingStatus(UpdateBookingStatusRequest req) async {
+    try {
+      final res = await api.updateBookingStatus(req);
+      return ApiSuccess(res);
+    } catch (e) {
+      if (e is ApiException) {
+        return ApiFailure(e.message, statusCode: e.statusCode);
+      }
+      return ApiFailure(e.toString());
+    }
+  }
+
 }
