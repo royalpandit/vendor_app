@@ -26,6 +26,15 @@ class AppIcons {
   static const String visibilityIcon = 'assets/icons/visiblity_icon.png';
   static const String callIcon = 'assets/icons/call_icon.png';
   static const String whatsuppIcon = 'assets/icons/whatsapp_icon.png';
+  
+  // New icons for profile screen
+  static const String emptyGif = 'assets/icons/emptygiff.gif';
+  static const String galleryExportIcon = 'assets/icons/gallery-export.png';
+  static const String briefcaseIcon = 'assets/icons/briefcase.png';
+  static const String notificationNewIcon = 'assets/icons/notification.png';
+  static const String lifeBuoyIcon = 'assets/icons/lifebuoy.png';
+  static const String logoutNewIcon = 'assets/icons/logout.png';
+  static const String arrowLeft = 'assets/icons/arrow-left.png';
 
   // For images
   static const String bannerImage = 'assets/images/banner_image.png';

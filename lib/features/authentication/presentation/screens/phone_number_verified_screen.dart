@@ -7,8 +7,6 @@ import 'package:vendor_app/core/session/session.dart';
 import 'package:vendor_app/core/utils/app_colors.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
 import 'package:vendor_app/features/authentication/presentation/screens/basic_info_screen.dart';
-import 'package:vendor_app/features/authentication/presentation/widgets/custom_text_field.dart';
-import 'package:vendor_app/features/authentication/presentation/widgets/custom_text_field_enable.dart';
 import 'package:vendor_app/features/home/presentation/screens/home_screen.dart';
 
 
@@ -121,14 +119,14 @@ class _PhoneNumberVerifiedScreenState extends State<PhoneNumberVerifiedScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.whiteColor,
-      appBar: AppBar(
-        backgroundColor: AppColors.whiteColor,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        elevation: 3,
-      ),
+      // appBar: AppBar(
+      //   backgroundColor: AppColors.whiteColor,
+      //   // leading: IconButton(
+      //   //   icon: const Icon(Icons.arrow_back),
+      //   //   onPressed: () => Navigator.pop(context),
+      //   // ),
+      //   elevation: 3,
+      // ),
       body: Column(
         children: [
           if (auth.loading) const LinearProgressIndicator(minHeight: 3),
@@ -139,53 +137,217 @@ class _PhoneNumberVerifiedScreenState extends State<PhoneNumberVerifiedScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Your Phone Number',
-                    style: TextStyle(
-                      fontFamily: 'OnestSemiBold',
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
+                  const SizedBox(height: 100),
+                  
+                  // Title
+                  SizedBox(
+                    width: 380,
+                    child: Text(
+                      'Your Phone Number',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 24,
+                        fontFamily: 'OnestSemiBold',
+                        fontWeight: FontWeight.bold,
+                        height: 1.33,
+                        letterSpacing: -0.55,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 10),
-                  const Text(
-                    "Enter your phone number so that we could send you a verification code and get yourself verified.",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontFamily: 'OnestRegular',
-                      color: Colors.grey,
+                  
+                  // Description
+                  SizedBox(
+                    width: 380,
+                    child: Text(
+                      'Enter your phone number so that we could send you a verification code and get yourself verified',
+                      style: TextStyle(
+                        color: const Color(0xFF797979),
+                        fontSize: 14,
+                        fontFamily: 'OnestRegular',
+                        fontWeight: FontWeight.w400,
+                        height: 1.29,
+                        letterSpacing: -0.32,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 24),   
 
-                  // Phone (visible always; gets disabled after OTP sent)
-                  CustomTextFieldEnable(
-                    controller: _phoneController,
-                    label: "Phone Number",
-                    keyboardType: TextInputType.phone,
+                  // Phone Number Label
+                  Container(
+                    width: double.infinity,
+                    height: 20,
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          left: 0,
+                          top: 0,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            spacing: 10,
+                            children: [
+                              Text(
+                                'Phone Number',
+                                style: TextStyle(
+                                  color: const Color(0xFF746E85),
+                                  fontSize: 16,
+                                  fontFamily: 'Onest',
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
 
-                     enabled: !auth.loading && !_otpPhase,
+                  // Phone Number Input
+                  Container(
+                    width: 380,
+                    height: 52,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                    decoration: ShapeDecoration(
+                      color: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        side: BorderSide(
+                          width: 1,
+                          color: const Color(0xFFDBE2EA),
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      shadows: [
+                        BoxShadow(
+                          color: Color(0x0A2C2738),
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                          spreadRadius: 0,
+                        )
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _phoneController,
+                      enabled: !auth.loading && !_otpPhase,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        hintText: 'Enter your phone number',
+                        hintStyle: TextStyle(
+                          color: const Color(0xFF7C9BBF),
+                          fontSize: 16,
+                          fontFamily: 'Onest',
+                          fontWeight: FontWeight.w400,
+                          height: 1.50,
+                        ),
+                        contentPadding: EdgeInsets.zero,
+                        isDense: true,
+                      ),
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontFamily: 'Onest',
+                        fontWeight: FontWeight.w400,
+                        height: 1.50,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
 
                   // OTP section — only after sendOtp success
                   if (_otpPhase) ...[
-                    CustomTextFieldEnable(
-                      controller: _otpController,
-                      label: "One Time Password",
-                      keyboardType: TextInputType.number,
-                       enabled: !auth.loading,
-
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    // OTP Label
+                    Container(
+                      width: double.infinity,
+                      height: 20,
+                      child: Stack(
+                        children: [
+                          Positioned(
+                            left: 0,
+                            top: 0,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              spacing: 10,
+                              children: [
+                                Text(
+                                  'One Time Password',
+                                  style: TextStyle(
+                                    color: const Color(0xFF746E85),
+                                    fontSize: 16,
+                                    fontFamily: 'Onest',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    // OTP Input
+                    Container(
+                      width: 380,
+                      height: 52,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                      decoration: ShapeDecoration(
+                        color: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          side: BorderSide(
+                            width: 1,
+                            color: const Color(0xFFDBE2EA),
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        shadows: [
+                          BoxShadow(
+                            color: Color(0x0A2C2738),
+                            blurRadius: 8,
+                            offset: Offset(0, 4),
+                            spreadRadius: 0,
+                          )
+                        ],
+                      ),
+                      child: TextField(
+                        controller: _otpController,
+                        enabled: !auth.loading,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          hintText: 'Enter OTP',
+                          hintStyle: TextStyle(
+                            color: const Color(0xFF7C9BBF),
+                            fontSize: 16,
+                            fontFamily: 'Onest',
+                            fontWeight: FontWeight.w400,
+                            height: 1.50,
+                          ),
+                          contentPadding: EdgeInsets.zero,
+                          isDense: true,
+                        ),
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 16,
+                          fontFamily: 'Onest',
+                          fontWeight: FontWeight.w400,
+                          height: 1.50,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      "We’ve sent a code to your number. Enter it to continue.",
+                      "We've sent a code to your number. Enter it to continue.",
                       style: TextStyle(
                         fontSize: 13,
                         color: Colors.grey.shade600,
-                        fontFamily: 'OnestRegular',
+                        fontFamily: 'Onest',
+                        fontWeight: FontWeight.w400,
                       ),
                     ),
                   ],
@@ -193,24 +355,54 @@ class _PhoneNumberVerifiedScreenState extends State<PhoneNumberVerifiedScreen> {
                   const Spacer(),
 
                   // Single button: Confirm (Phase 1 → sendOtp, Phase 2 → verifyOtp)
-                  ElevatedButton(
-                    onPressed: auth.loading ? null : () => _onConfirmPressed(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.pinkColor,
-                      minimumSize: const Size(double.infinity, 50),
-                    ),
-                    child: auth.loading
-                        ? const SizedBox(
-                      height: 22,
-                      width: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
+                  GestureDetector(
+                    onTap: auth.loading ? null : () => _onConfirmPressed(context),
+                    child: Container(
+                      width: 380,
+                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                      clipBehavior: Clip.antiAlias,
+                      decoration: ShapeDecoration(
+                        color: const Color(0xFFFF4678),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                    )
-                        : Text(
-                      _otpPhase ? "Verify & Continue" : "Confirm & Continue",
-                      style: TextStyle(color: AppColors.whiteColor),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            spacing: 6,
+                            children: [
+                              if (auth.loading)
+                                const SizedBox(
+                                  height: 22,
+                                  width: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              else
+                                Text(
+                                  _otpPhase ? "Verify & Continue" : "Confirm & Continue",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontFamily: 'Onest',
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.50,
+                                    letterSpacing: 0.09,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],

@@ -19,14 +19,19 @@ import 'package:vendor_app/features/home/data/models/resposne/dashboard_response
 import 'package:vendor_app/features/home/data/models/resposne/new_lead.dart';
 import 'package:vendor_app/features/home/data/models/resposne/update_booking_status_response.dart';
 import 'package:vendor_app/features/profile/data/models/request/notification_settings_request.dart';
+import 'package:vendor_app/features/profile/data/models/request/send_message_request.dart';
 import 'package:vendor_app/features/profile/data/models/request/service_add_request.dart';
 import 'package:vendor_app/features/profile/data/models/request/user_portfolio_request.dart';
 import 'package:vendor_app/features/profile/data/models/request/venue_create_request.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/amenity_model_response.dart';
+import 'package:vendor_app/features/profile/data/models/resposne/booking_invoice_response.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/cities_data.dart';
+import 'package:vendor_app/features/profile/data/models/resposne/contact_support_response.dart';
+import 'package:vendor_app/features/profile/data/models/resposne/faq_response.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/get_user_portfolio_response.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/notification_settings_response.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/service_add_response.dart';
+import 'package:vendor_app/features/profile/data/models/resposne/service_details_response.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/states_data.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/user_portfolio_resposne.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/vendor_details_model.dart';
@@ -64,6 +69,12 @@ class AuthProvider extends ChangeNotifier {
   VenueCreateResponse? createdVenue;
   List<CityItem> cities = [];
   List<StateItem> states = [];
+  
+  // New state variables for help & support
+  List<ContactSupportResponse> contactSupport = [];
+  List<FaqResponse> faqs = [];
+  ServiceDetailsResponse? serviceDetails;
+  BookingInvoiceResponse? bookingInvoice;
 
   Future<void> sendOtp(String phone) async {
     loading = true;
@@ -613,6 +624,357 @@ class AuthProvider extends ChangeNotifier {
       case ApiSuccess<BaseResponse<UpdateBookingStatusResponse>>():
         message = res.data.message ??
             'Booking status updated successfully';
+        notifyListeners();
+        return true;
+
+      case ApiFailure():
+        message = res.message;
+        notifyListeners();
+        return false;
+    }
+  }
+
+  // ---------- HELP & SUPPORT ----------
+  
+  /// Fetch contact support details
+  Future<bool> fetchContactSupport() async {
+    loading = true;
+    message = null;
+    notifyListeners();
+
+    final res = await _repo.getContactSupport();
+
+    loading = false;
+    switch (res) {
+      case ApiSuccess<BaseResponse<List<ContactSupportResponse>>>():
+        contactSupport = res.data.data ?? [];
+        message = res.data.message;
+        notifyListeners();
+        return true;
+
+      case ApiFailure():
+        contactSupport = [];
+        message = res.message;
+        notifyListeners();
+        return false;
+    }
+  }
+
+  /// Fetch FAQs
+  Future<bool> fetchFaqs() async {
+    loading = true;
+    message = null;
+    notifyListeners();
+
+    final res = await _repo.getFaqs();
+
+    loading = false;
+    switch (res) {
+      case ApiSuccess<BaseResponse<List<FaqResponse>>>():
+        faqs = res.data.data ?? [];
+        message = res.data.message;
+        notifyListeners();
+        return true;
+
+      case ApiFailure():
+        faqs = [];
+        message = res.message;
+        notifyListeners();
+        return false;
+    }
+  }
+
+  // ---------- SERVICE OPERATIONS ----------
+  
+  /// Get service details
+  Future<bool> fetchServiceDetails(int serviceId) async {
+    loading = true;
+    message = null;
+    serviceDetails = null;
+    notifyListeners();
+
+    final res = await _repo.getServiceDetails(serviceId);
+
+    loading = false;
+    switch (res) {
+      case ApiSuccess<BaseResponse<ServiceDetailsResponse>>():
+        serviceDetails = res.data.data;
+        message = res.data.message;
+        notifyListeners();
+        return true;
+
+      case ApiFailure():
+        message = res.message;
+        notifyListeners();
+        return false;
+    }
+  }
+
+  /// Get service list
+  Future<Map<String, dynamic>?> fetchServiceList({
+    String type = 'service',
+    int? vendorId,
+    int? subcategoryId,
+    String? search,
+    int perPage = 15,
+  }) async {
+    loading = true;
+    message = null;
+    notifyListeners();
+
+    final res = await _repo.getServiceList(
+      type: type,
+      vendorId: vendorId,
+      subcategoryId: subcategoryId,
+      search: search,
+      perPage: perPage,
+    );
+
+    loading = false;
+    switch (res) {
+      case ApiSuccess<BaseResponse<Map<String, dynamic>>>():
+        message = res.data.message;
+        notifyListeners();
+        return res.data.data;
+
+      case ApiFailure():
+        message = res.message;
+        notifyListeners();
+        return null;
+    }
+  }
+
+  /// Update service
+  Future<bool> updateService(Map<String, dynamic> data) async {
+    loading = true;
+    message = null;
+    notifyListeners();
+
+    final res = await _repo.updateService(data);
+
+    loading = false;
+    switch (res) {
+      case ApiSuccess<BaseResponse<Map<String, dynamic>>>():
+        message = res.data.message ?? 'Service updated successfully';
+        notifyListeners();
+        return true;
+
+      case ApiFailure():
+        message = res.message;
+        notifyListeners();
+        return false;
+    }
+  }
+
+  // ---------- BOOKING OPERATIONS ----------
+  
+  /// Get booking details
+  Future<Map<String, dynamic>?> fetchBookingDetails(int bookingId) async {
+    loading = true;
+    message = null;
+    notifyListeners();
+
+    final res = await _repo.getBookingDetails(bookingId);
+
+    loading = false;
+    switch (res) {
+      case ApiSuccess<BaseResponse<Map<String, dynamic>>>():
+        message = res.data.message;
+        notifyListeners();
+        return res.data.data;
+
+      case ApiFailure():
+        message = res.message;
+        notifyListeners();
+        return null;
+    }
+  }
+
+  /// Get booking invoice
+  Future<bool> fetchBookingInvoice(int bookingId) async {
+    loading = true;
+    message = null;
+    bookingInvoice = null;
+    notifyListeners();
+
+    final res = await _repo.getBookingInvoice(bookingId);
+
+    loading = false;
+    switch (res) {
+      case ApiSuccess<BaseResponse<BookingInvoiceResponse>>():
+        bookingInvoice = res.data.data;
+        message = res.data.message;
+        notifyListeners();
+        return true;
+
+      case ApiFailure():
+        message = res.message;
+        notifyListeners();
+        return false;
+    }
+  }
+
+  /// Create bookings from shortlist
+  Future<List<Map<String, dynamic>>?> createBookingsFromShortlist(
+    int userId,
+    List<int> shortlistIds,
+  ) async {
+    loading = true;
+    message = null;
+    notifyListeners();
+
+    final res = await _repo.createBookings(userId, shortlistIds);
+
+    loading = false;
+    switch (res) {
+      case ApiSuccess<BaseResponse<List<Map<String, dynamic>>>>():
+        message = res.data.message ?? 'Bookings created successfully';
+        notifyListeners();
+        return res.data.data;
+
+      case ApiFailure():
+        message = res.message;
+        notifyListeners();
+        return null;
+    }
+  }
+
+  /// Get bookings by user
+  Future<List<Map<String, dynamic>>?> fetchBookings(int userId) async {
+    loading = true;
+    message = null;
+    notifyListeners();
+
+    final res = await _repo.getBookings(userId);
+
+    loading = false;
+    switch (res) {
+      case ApiSuccess<BaseResponse<List<Map<String, dynamic>>>>():
+        message = res.data.message;
+        notifyListeners();
+        return res.data.data;
+
+      case ApiFailure():
+        message = res.message;
+        notifyListeners();
+        return null;
+    }
+  }
+
+  /// Delete booking
+  Future<bool> removeBooking(int userId, int bookingId) async {
+    loading = true;
+    message = null;
+    notifyListeners();
+
+    final res = await _repo.deleteBooking(userId, bookingId);
+
+    loading = false;
+    switch (res) {
+      case ApiSuccess<BaseResponse<Map<String, dynamic>>>():
+        message = res.data.message ?? 'Booking deleted successfully';
+        notifyListeners();
+        return true;
+
+      case ApiFailure():
+        message = res.message;
+        notifyListeners();
+        return false;
+    }
+  }
+
+  // ---------- MESSAGE OPERATIONS ----------
+  
+  /// Send message
+  Future<bool> sendMessage({
+    required int senderId,
+    required int receiverId,
+    required String messageText,
+  }) async {
+    loading = true;
+    message = null;
+    notifyListeners();
+
+    final req = SendMessageRequest(
+      senderId: senderId,
+      receiverId: receiverId,
+      message: messageText,
+    );
+
+    final res = await _repo.sendMessage(req);
+
+    loading = false;
+    switch (res) {
+      case ApiSuccess<BaseResponse<Object?>>():
+        message = res.data.message ?? 'Message sent successfully';
+        notifyListeners();
+        return true;
+
+      case ApiFailure():
+        message = res.message;
+        notifyListeners();
+        return false;
+    }
+  }
+
+  // ---------- VENDOR OPERATIONS ----------
+  
+  /// Get all vendors
+  Future<Map<String, dynamic>?> fetchVendors({int perPage = 10}) async {
+    loading = true;
+    message = null;
+    notifyListeners();
+
+    final res = await _repo.getVendors(perPage: perPage);
+
+    loading = false;
+    switch (res) {
+      case ApiSuccess<BaseResponse<Map<String, dynamic>>>():
+        message = res.data.message;
+        notifyListeners();
+        return res.data.data;
+
+      case ApiFailure():
+        message = res.message;
+        notifyListeners();
+        return null;
+    }
+  }
+
+  /// Update vendor
+  Future<bool> updateVendorData(int vendorId, Map<String, dynamic> data) async {
+    loading = true;
+    message = null;
+    notifyListeners();
+
+    final res = await _repo.updateVendor(vendorId, data);
+
+    loading = false;
+    switch (res) {
+      case ApiSuccess<BaseResponse<Map<String, dynamic>>>():
+        message = res.data.message ?? 'Vendor updated successfully';
+        notifyListeners();
+        return true;
+
+      case ApiFailure():
+        message = res.message;
+        notifyListeners();
+        return false;
+    }
+  }
+
+  /// Delete user
+  Future<bool> removeUser(int userId) async {
+    loading = true;
+    message = null;
+    notifyListeners();
+
+    final res = await _repo.deleteUser(userId);
+
+    loading = false;
+    switch (res) {
+      case ApiSuccess<BaseResponse<Object?>>():
+        message = res.data.message ?? 'User deleted successfully';
         notifyListeners();
         return true;
 

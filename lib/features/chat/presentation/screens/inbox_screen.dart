@@ -35,7 +35,9 @@ class _InboxScreenState extends State<InboxScreen> {
     userId = userData?.id ?? 0;
     final authProvider = context.read<AuthProvider>();
 
-    // Fetch the messages after getting the userId
+    // Fetch the vendor details, dashboard data and messages after getting the userId
+    await authProvider.fetchVendorDetails(userId);
+    await authProvider.fetchVendorDashboard(userId);
     await _fetchInboxMessages(authProvider);
   }
 
@@ -69,546 +71,316 @@ class _InboxScreenState extends State<InboxScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(160.0),
-        child: AppBar(
-          automaticallyImplyLeading: false,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          flexibleSpace: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AppColors.lightPinkColor,
-                  Colors.white,
-                ],
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.only(left: 20, top: 50),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Welcome Back, Rajeeb',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    '8 new leads are waiting for you! 🔥',
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
-                  ),
-                  SizedBox(height: 10),
-                  // Search bar
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 15),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.3),
-                          blurRadius: 8,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Search for Chats',
-                        border: InputBorder.none,
-                        prefixIcon: Icon(Icons.search, color: Colors.grey),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 15),
-                  // Tabs for "All" and "Unread"
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            currentTab = 'All';
-                          });
-                        },
-                        child: Column(
-                          children: [
-                            Text(
-                              'All',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: currentTab == 'All' ? AppColors.pinkColor : Colors.grey,
-                              ),
-                            ),
-                            if (currentTab == 'All')
-                              Container(
-                                margin: EdgeInsets.only(top: 4),
-                                height: 2,
-                                width: 40,
-                                color: AppColors.pinkColor,
-                              ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: 20),
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            currentTab = 'Unread';
-                          });
-                        },
-                        child: Column(
-                          children: [
-                            Text(
-                              'Unread',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: currentTab == 'Unread' ? AppColors.pinkColor : Colors.grey,
-                              ),
-                            ),
-                            if (currentTab == 'Unread')
-                              Container(
-                                margin: EdgeInsets.only(top: 4),
-                                height: 2,
-                                width: 60,
-                                color: AppColors.pinkColor,
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment(0.43, 0.05),
+            end: Alignment(0.44, 0.26),
+            colors: [const Color(0xFFFFE5E8), Colors.white],
           ),
         ),
-      ),
-      body: Container(
-        color: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: isLoading
-            ? Center(child: CircularProgressIndicator()) // Show progress while loading
-            : ListView.builder(
-          itemCount: messages.length,
-          itemBuilder: (context, index) {
-            final data = messages[index];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: GestureDetector(
-                onTap: () {
-                  // Navigate to ChatScreen when tapping on a message
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ChatScreen(
-                        name: data.sender!.name,
-                        image: data.sender!.image,
-                        conversationId: data.id,
-                      ),
-                    ),
-                  );
-                },
-                child: Card(
-                  elevation: 0.7,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  color: AppColors.backgroundColor,
-                  child: Padding(
-                    padding: const EdgeInsets.all(10),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Profile image
-                        CircleAvatar(
-                          backgroundImage: NetworkImage(data.receiver!.image),
-                          radius: 30,
-                        ),
-                        SizedBox(width: 15),
-                        // Message content
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Row for name and time
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    data.receiver!.name,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                  Text(
-                                    //data.time,
-                                    data.receiver!.name,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: 5),
-                              // Message
-                              Text(
-                                data.lastMessage!.message,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                              ),
-                            ],
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Header Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: 24),
+                    // Welcome Text
+                    Consumer<AuthProvider>(
+                      builder: (context, authProvider, child) {
+                        return Text(
+                          'Welcome Back, ${authProvider.vendorDetails?.name ?? 'Vendor'}',
+                          style: TextStyle(
+                            color: const Color(0xFF171719),
+                            fontSize: 32,
+                            fontFamily: 'Onest',
+                            fontWeight: FontWeight.w600,
+                            height: 1.13,
                           ),
+                        );
+                      },
+                    ),
+                    SizedBox(height: 8),
+                    // Subtitle
+                    Consumer<AuthProvider>(
+                      builder: (context, authProvider, child) {
+                        return Text(
+                          '${authProvider.dashboardData?.totalLeads ?? 0} new leads are waiting for you! 🔥',
+                          style: TextStyle(
+                            color: const Color(0xFF5C5C5C),
+                            fontSize: 16,
+                            fontFamily: 'Onest',
+                            fontWeight: FontWeight.w400,
+                          ),
+                        );
+                      },
+                    ),
+                    SizedBox(height: 24),
+                    // Search Field
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: ShapeDecoration(
+                        color: const Color(0xFFFCFCFC),
+                        shape: RoundedRectangleBorder(
+                          side: BorderSide(
+                            width: 1,
+                            color: const Color(0x4CDBE2EA),
+                          ),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-      bottomNavigationBar: CustomBottomNavigation(currentIndex: 2),
-    );
-  }
-}
-
-/*
-class InboxScreen extends StatefulWidget {
-  final int currentIndex;
-  InboxScreen({required this.currentIndex});
-
-  @override
-  _InboxScreenState createState() => _InboxScreenState();
-}
-
-class _InboxScreenState extends State<InboxScreen> {
-  // List of sample messages for the inbox
-  final List<Map<String, String>> messages = [
-    {
-      'name': 'Culinary Delights Co.',
-      'message': 'Absolutely! Talk soon.',
-      'time': '9:15 AM',
-      'image': AppIcons.profileWhiteIcon, // Add path to your assets
-    },
-    {
-      'name': 'JW Marriott Juhu',
-      'message': 'Alright book the venue then an...',
-      'time': '10:30 AM',
-      'image': AppIcons.profileWhiteIcon, // Add path to your assets
-    },
-    {
-      'name': 'Luxe Beauty Bar',
-      'message': 'Provide me the pricing for both...',
-      'time': '11:45 AM',
-      'image':AppIcons.profileWhiteIcon, // Add path to your assets
-    },
-  ];
-
-  // Current tab for All/Unread
-  String currentTab = 'All';
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(160.0),
-        child: AppBar(
-          automaticallyImplyLeading: false,
-          backgroundColor: Colors.transparent, // Make the app bar transparent
-          elevation: 0,
-          flexibleSpace: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                 AppColors.lightPinkColor, // Pink color at the top
-                  Colors.white, // White color at the bottom
-                ],
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.only(left: 20, top: 50),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Welcome Back, Rajeeb',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    '8 new leads are waiting for you! 🔥',
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
-                  ),
-                  SizedBox(height: 10),
-                  // Search bar
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 15),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.3),
-                          blurRadius: 8,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Search for Chats',
-                        border: InputBorder.none,
-                        prefixIcon: Icon(Icons.search, color: Colors.grey),
                       ),
-                    ),
-                  ),
-                  SizedBox(height: 15),
-                  // Tabs for "All" and "Unread"
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            currentTab = 'All';
-                          });
-                        },
-                        child: Column(
-                          children: [
-                            Text(
-                              'All',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: currentTab == 'All' ? AppColors.pinkColor : Colors.grey,
+                      child: Row(
+                        children: [
+                          Image.asset(
+                            'assets/icons/Icon.png',
+                            width: 24,
+                            height: 24,
+                          ),
+                          SizedBox(width: 4),
+                          Expanded(
+                            child: TextField(
+                              decoration: InputDecoration(
+                                hintText: 'Search for Chats',
+                                hintStyle: TextStyle(
+                                  color: const Color(0x4737383C),
+                                  fontSize: 16,
+                                  fontFamily: 'Onest',
+                                  fontWeight: FontWeight.w400,
+                                  height: 1.50,
+                                  letterSpacing: 0.09,
+                                ),
+                                border: InputBorder.none,
+                                isDense: true,
+                                contentPadding: EdgeInsets.zero,
                               ),
                             ),
-                            if (currentTab == 'All')
-                              Container(
-                                margin: EdgeInsets.only(top: 4),
-                                height: 2,
-                                width: 40,
-                                color: AppColors.pinkColor,
-                              ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: 20),
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            currentTab = 'Unread';
-                          });
-                        },
-                        child: Column(
-                          children: [
-                            Text(
-                              'Unread',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: currentTab == 'Unread' ? AppColors.pinkColor : Colors.grey,
-                              ),
-                            ),
-                            if (currentTab == 'Unread')
-                              Container(
-                                margin: EdgeInsets.only(top: 4),
-                                height: 2,
-                                width: 60,
-                                color: AppColors.pinkColor,
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-      body: Container(
-        color: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: ListView.builder(
-          itemCount: messages.length,
-          itemBuilder: (context, index) {
-            final message = messages[index];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: GestureDetector(
-                onTap: () {
-                  // Navigate to ChatScreen when tapping on a message
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ChatScreen(
-                        name: message['name']!,
-                        image: message['image']!,
-                      ),
-                    ),
-                  );
-                },
-                child: Card(
-                  elevation: 0.7,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  color: AppColors.backgroundColor,
-                  child: Padding(
-                    padding: const EdgeInsets.all(10),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Profile image
-                        CircleAvatar(
-                          backgroundImage: AssetImage(message['image']!),
-                          radius: 30,
-                        ),
-                        SizedBox(width: 15),
-                        // Message content
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Row for name and time
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    message['name']!,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                  Text(
-                                    message['time']!,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: 5),
-                              // Message
-                              Text(
-                                message['message']!,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                              ),
-                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-      */
-/*body: Container(
-        color: Colors.white, // Ensuring the body is white and separated from the app bar
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: ListView.builder(
-          itemCount: messages.length,
-          itemBuilder: (context, index) {
-            final message = messages[index];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Card(
-                elevation: 0.7,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                color: AppColors.backgroundColor,
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Profile image
-                      CircleAvatar(
-                        backgroundImage: AssetImage(message['image']!),
-                        radius: 30,
+                        ],
                       ),
-                      SizedBox(width: 15),
-                      // Message content
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Row for name and time
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    ),
+                    SizedBox(height: 12),
+                    // Tabs
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              currentTab = 'All';
+                            });
+                          },
+                          child: Container(
+                            width: 60,
+                            height: 48,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Stack(
                               children: [
-                                Text(
-                                  message['name']!,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
+                                Center(
+                                  child: Text(
+                                    'All',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: currentTab == 'All'
+                                          ? const Color(0xFFFF4678)
+                                          : const Color(0x4737383C),
+                                      fontSize: 17,
+                                      fontFamily: 'Onest',
+                                      fontWeight: currentTab == 'All'
+                                          ? FontWeight.w600
+                                          : FontWeight.w500,
+                                      height: 1.41,
+                                    ),
                                   ),
                                 ),
-                                Text(
-                                  message['time']!,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
+                                if (currentTab == 'All')
+                                  Positioned(
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    child: Container(
+                                      height: 2,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFF4678),
+                                      ),
+                                    ),
                                   ),
-                                ),
                               ],
                             ),
-                            SizedBox(height: 5),
-                            // Message
-                            Text(
-                              message['message']!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                        SizedBox(width: 24),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              currentTab = 'Unread';
+                            });
+                          },
+                          child: Container(
+                            height: 48,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Stack(
+                              children: [
+                                Center(
+                                  child: Text(
+                                    'Unread',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: currentTab == 'Unread'
+                                          ? const Color(0xFFFF4678)
+                                          : const Color(0x4737383C),
+                                      fontSize: 17,
+                                      fontFamily: 'Onest',
+                                      fontWeight: currentTab == 'Unread'
+                                          ? FontWeight.w600
+                                          : FontWeight.w500,
+                                      height: 1.41,
+                                    ),
+                                  ),
+                                ),
+                                if (currentTab == 'Unread')
+                                  Positioned(
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    child: Container(
+                                      height: 2,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFF4678),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            );
-          },
+              // Messages List
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: isLoading
+                      ? Center(child: CircularProgressIndicator())
+                      : ListView.builder(
+                          padding: const EdgeInsets.only(top: 12),
+                          itemCount: messages.length,
+                          itemBuilder: (context, index) {
+                            final data = messages[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => ChatScreen(
+                                        name: data.sender!.name,
+                                        image: data.sender!.image,
+                                        conversationId: data.id,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 12),
+                                  decoration: ShapeDecoration(
+                                    color: const Color(0xFFF9F9F9),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      // Profile Image
+                                      Container(
+                                        width: 70,
+                                        height: 70,
+                                        decoration: ShapeDecoration(
+                                          image: DecorationImage(
+                                            image: NetworkImage(data.receiver!.image),
+                                            fit: BoxFit.cover,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(35),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: 16),
+                                      // Message Content
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            // Name and Time Row
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    data.receiver!.name,
+                                                    style: TextStyle(
+                                                      color: const Color(0xFF0C141C),
+                                                      fontSize: 16,
+                                                      fontFamily: 'Onest',
+                                                      fontWeight: FontWeight.w500,
+                                                      height: 1.50,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Text(
+                                                  // Format time or use static value
+                                                  '9:15 AM',
+                                                  textAlign: TextAlign.right,
+                                                  style: TextStyle(
+                                                    color: const Color(0xFF4C7299),
+                                                    fontSize: 14,
+                                                    fontFamily: 'Onest',
+                                                    fontWeight: FontWeight.w400,
+                                                    height: 1.71,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            SizedBox(height: 8),
+                                            // Message Text
+                                            Text(
+                                              data.lastMessage!.message,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                color: Colors.black.withOpacity(0.50),
+                                                fontSize: 14,
+                                                fontFamily: 'Onest',
+                                                fontWeight: FontWeight.w300,
+                                                height: 1.43,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),*//*
-
-      bottomNavigationBar: CustomBottomNavigation(currentIndex: 2),
+      ),
+      bottomNavigationBar: CustomBottomNavigation(currentIndex: widget.currentIndex),
     );
   }
 }
-*/

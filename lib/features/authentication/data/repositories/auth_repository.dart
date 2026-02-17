@@ -21,14 +21,19 @@ import 'package:vendor_app/features/home/data/models/resposne/dashboard_response
 import 'package:vendor_app/features/home/data/models/resposne/new_lead.dart';
 import 'package:vendor_app/features/home/data/models/resposne/update_booking_status_response.dart';
 import 'package:vendor_app/features/profile/data/models/request/notification_settings_request.dart';
+import 'package:vendor_app/features/profile/data/models/request/send_message_request.dart';
 import 'package:vendor_app/features/profile/data/models/request/service_add_request.dart';
 import 'package:vendor_app/features/profile/data/models/request/user_portfolio_request.dart';
 import 'package:vendor_app/features/profile/data/models/request/venue_create_request.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/amenity_model_response.dart';
+import 'package:vendor_app/features/profile/data/models/resposne/booking_invoice_response.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/cities_data.dart';
+import 'package:vendor_app/features/profile/data/models/resposne/contact_support_response.dart';
+import 'package:vendor_app/features/profile/data/models/resposne/faq_response.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/get_user_portfolio_response.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/notification_settings_response.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/service_add_response.dart';
+import 'package:vendor_app/features/profile/data/models/resposne/service_details_response.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/states_data.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/user_portfolio_resposne.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/vendor_details_model.dart';
@@ -308,6 +313,191 @@ class AuthRepository {
       if (e is ApiException) {
         return ApiFailure(e.message, statusCode: e.statusCode);
       }
+      return ApiFailure(e.toString());
+    }
+  }
+
+  // ---------- HELP & SUPPORT ----------
+
+  Future<ApiResult<BaseResponse<List<ContactSupportResponse>>>> getContactSupport() async {
+    try {
+      final res = await api.getContactSupport();
+      return ApiSuccess(res);
+    } on ApiException catch (e) {
+      return ApiFailure(e.message, statusCode: e.statusCode);
+    } catch (e) {
+      return ApiFailure(e.toString());
+    }
+  }
+
+  Future<ApiResult<BaseResponse<List<FaqResponse>>>> getFaqs() async {
+    try {
+      final res = await api.getFaqs();
+      return ApiSuccess(res);
+    } on ApiException catch (e) {
+      return ApiFailure(e.message, statusCode: e.statusCode);
+    } catch (e) {
+      return ApiFailure(e.toString());
+    }
+  }
+
+  // ---------- SERVICE OPERATIONS ----------
+
+  Future<ApiResult<BaseResponse<ServiceDetailsResponse>>> getServiceDetails(int serviceId) async {
+    try {
+      final res = await api.getServiceDetails(serviceId);
+      return ApiSuccess(res);
+    } on ApiException catch (e) {
+      return ApiFailure(e.message, statusCode: e.statusCode);
+    } catch (e) {
+      return ApiFailure(e.toString());
+    }
+  }
+
+  Future<ApiResult<BaseResponse<Map<String, dynamic>>>> getServiceList({
+    String type = 'service',
+    int? vendorId,
+    int? subcategoryId,
+    String? search,
+    int perPage = 15,
+  }) async {
+    try {
+      final res = await api.getServiceList(
+        type: type,
+        vendorId: vendorId,
+        subcategoryId: subcategoryId,
+        search: search,
+        perPage: perPage,
+      );
+      return ApiSuccess(res);
+    } on ApiException catch (e) {
+      return ApiFailure(e.message, statusCode: e.statusCode);
+    } catch (e) {
+      return ApiFailure(e.toString());
+    }
+  }
+
+  Future<ApiResult<BaseResponse<Map<String, dynamic>>>> updateService(Map<String, dynamic> data) async {
+    try {
+      final res = await api.updateService(data);
+      return ApiSuccess(res);
+    } on ApiException catch (e) {
+      return ApiFailure(e.message, statusCode: e.statusCode);
+    } catch (e) {
+      return ApiFailure(e.toString());
+    }
+  }
+
+  // ---------- BOOKING OPERATIONS ----------
+
+  Future<ApiResult<BaseResponse<Map<String, dynamic>>>> getBookingDetails(int bookingId) async {
+    try {
+      final res = await api.getBookingDetails(bookingId);
+      return ApiSuccess(res);
+    } on ApiException catch (e) {
+      return ApiFailure(e.message, statusCode: e.statusCode);
+    } catch (e) {
+      return ApiFailure(e.toString());
+    }
+  }
+
+  Future<ApiResult<BaseResponse<BookingInvoiceResponse>>> getBookingInvoice(int bookingId) async {
+    try {
+      final res = await api.getBookingInvoice(bookingId);
+      return ApiSuccess(res);
+    } on ApiException catch (e) {
+      return ApiFailure(e.message, statusCode: e.statusCode);
+    } catch (e) {
+      return ApiFailure(e.toString());
+    }
+  }
+
+  Future<ApiResult<BaseResponse<List<Map<String, dynamic>>>>> createBookings(
+    int userId,
+    List<int> shortlistIds,
+  ) async {
+    try {
+      final res = await api.createBookings(userId, shortlistIds);
+      return ApiSuccess(res);
+    } on ApiException catch (e) {
+      return ApiFailure(e.message, statusCode: e.statusCode);
+    } catch (e) {
+      return ApiFailure(e.toString());
+    }
+  }
+
+  Future<ApiResult<BaseResponse<List<Map<String, dynamic>>>>> getBookings(int userId) async {
+    try {
+      final res = await api.getBookings(userId);
+      return ApiSuccess(res);
+    } on ApiException catch (e) {
+      return ApiFailure(e.message, statusCode: e.statusCode);
+    } catch (e) {
+      return ApiFailure(e.toString());
+    }
+  }
+
+  Future<ApiResult<BaseResponse<Map<String, dynamic>>>> deleteBooking(
+    int userId,
+    int bookingId,
+  ) async {
+    try {
+      final res = await api.deleteBooking(userId, bookingId);
+      return ApiSuccess(res);
+    } on ApiException catch (e) {
+      return ApiFailure(e.message, statusCode: e.statusCode);
+    } catch (e) {
+      return ApiFailure(e.toString());
+    }
+  }
+
+  // ---------- MESSAGE OPERATIONS ----------
+
+  Future<ApiResult<BaseResponse<Object?>>> sendMessage(SendMessageRequest req) async {
+    try {
+      final res = await api.sendMessage(req);
+      return ApiSuccess(res);
+    } on ApiException catch (e) {
+      return ApiFailure(e.message, statusCode: e.statusCode);
+    } catch (e) {
+      return ApiFailure(e.toString());
+    }
+  }
+
+  // ---------- VENDOR OPERATIONS ----------
+
+  Future<ApiResult<BaseResponse<Map<String, dynamic>>>> getVendors({int perPage = 10}) async {
+    try {
+      final res = await api.getVendors(perPage: perPage);
+      return ApiSuccess(res);
+    } on ApiException catch (e) {
+      return ApiFailure(e.message, statusCode: e.statusCode);
+    } catch (e) {
+      return ApiFailure(e.toString());
+    }
+  }
+
+  Future<ApiResult<BaseResponse<Map<String, dynamic>>>> updateVendor(
+    int vendorId,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final res = await api.updateVendor(vendorId, data);
+      return ApiSuccess(res);
+    } on ApiException catch (e) {
+      return ApiFailure(e.message, statusCode: e.statusCode);
+    } catch (e) {
+      return ApiFailure(e.toString());
+    }
+  }
+
+  Future<ApiResult<BaseResponse<Object?>>> deleteUser(int userId) async {
+    try {
+      final res = await api.deleteUser(userId);
+      return ApiSuccess(res);
+    } on ApiException catch (e) {
+      return ApiFailure(e.message, statusCode: e.statusCode);
+    } catch (e) {
       return ApiFailure(e.toString());
     }
   }

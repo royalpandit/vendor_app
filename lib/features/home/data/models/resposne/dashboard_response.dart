@@ -1,4 +1,5 @@
 class DashboardResponse {
+  final String? vendorName; // Added vendor name
   final int totalLeads;
   final int totalBooking;
   final int activeBooking;
@@ -6,6 +7,7 @@ class DashboardResponse {
   final List<Lead> latestLeads;
 
   DashboardResponse({
+    this.vendorName,
     required this.totalLeads,
     required this.totalBooking,
     required this.activeBooking,
@@ -16,6 +18,7 @@ class DashboardResponse {
   factory DashboardResponse.fromJson(Map<String, dynamic> json) {
     var leads = json['latest_leads'] as List? ?? [];
     return DashboardResponse(
+      vendorName: json['vendor_name'] ?? json['name'], // Support both field names
       totalLeads: json['total_leads'] ?? 0,
       totalBooking: json['total_booking'] ?? 0,
       activeBooking: json['active_booking'] ?? 0,

@@ -1,10 +1,9 @@
 // lib/features/auth/data/auth_api.dart
-import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:vendor_app/core/network/api_exceptions.dart';
 import 'package:vendor_app/core/network/base_response.dart';
 import 'package:vendor_app/core/network/endpoints.dart';
+import 'package:vendor_app/core/session/session.dart';
 import 'package:vendor_app/features/authentication/data/models/request/send_otp_request.dart';
 import 'package:vendor_app/features/authentication/data/models/request/vendor_create_request.dart';
 import 'package:vendor_app/features/authentication/data/models/resposne/category_model_response.dart';
@@ -22,14 +21,19 @@ import 'package:vendor_app/features/home/data/models/resposne/dashboard_response
 import 'package:vendor_app/features/home/data/models/resposne/new_lead.dart';
 import 'package:vendor_app/features/home/data/models/resposne/update_booking_status_response.dart';
 import 'package:vendor_app/features/profile/data/models/request/notification_settings_request.dart';
+import 'package:vendor_app/features/profile/data/models/request/send_message_request.dart';
 import 'package:vendor_app/features/profile/data/models/request/service_add_request.dart';
 import 'package:vendor_app/features/profile/data/models/request/user_portfolio_request.dart';
 import 'package:vendor_app/features/profile/data/models/request/venue_create_request.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/amenity_model_response.dart';
+import 'package:vendor_app/features/profile/data/models/resposne/booking_invoice_response.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/cities_data.dart';
+import 'package:vendor_app/features/profile/data/models/resposne/contact_support_response.dart';
+import 'package:vendor_app/features/profile/data/models/resposne/faq_response.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/get_user_portfolio_response.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/notification_settings_response.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/service_add_response.dart';
+import 'package:vendor_app/features/profile/data/models/resposne/service_details_response.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/states_data.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/user_portfolio_resposne.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/vendor_details_model.dart';
@@ -121,6 +125,15 @@ class AuthApi {
   ///Vendor Dashboard
   Future<BaseResponse<DashboardResponse>> getVendorDashboard(int userId) async {
     try {
+      // Debug: Log the current token being used
+      final currentToken = Session.token;
+      if (currentToken == null || currentToken.isEmpty) {
+        throw ApiException(
+          'No authentication token found. Please login again.',
+          statusCode: 401,
+        );
+      }
+
       final response = await _dio.get(
         Endpoints.vendorDashboard, // Using the endpoint from Endpoints class
         queryParameters: {'user_id': userId}, // Sending user_id as query parameter
@@ -130,6 +143,24 @@ class AuthApi {
       return BaseResponse.fromJson(decoded, (json) {
         return DashboardResponse.fromJson(json as Map<String, dynamic>);
       });
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 403) {
+        throw ApiException(
+          'Access denied. Please ensure you are logged in as a vendor.',
+          statusCode: 403,
+        );
+      } else if (e.response?.statusCode == 401) {
+        // Clear expired token
+        Session.token = null;
+        throw ApiException(
+          'Session expired. Please login again.',
+          statusCode: 401,
+        );
+      }
+      throw ApiException(
+        'Failed to fetch vendor dashboard: ${e.message}',
+        statusCode: e.response?.statusCode,
+      );
     } catch (e) {
       throw ApiException('Failed to fetch vendor dashboard: $e');
     }
@@ -350,6 +381,215 @@ class AuthApi {
     return BaseResponse.fromJson(decoded, (json) {
       return UpdateBookingStatusResponse.fromJson(
           json as Map<String, dynamic>);
+    });
+  }
+
+  /// GET /api/help/contact-support
+  Future<BaseResponse<List<ContactSupportResponse>>> getContactSupport() async {
+    final res = await _dio.get(Endpoints.contactSupport);
+    final decoded = res.data;
+
+    return BaseResponse.fromJson(decoded, (json) {
+      final list = (json as List);
+      return list
+          .map((e) => ContactSupportResponse.fromJson(e as Map<String, dynamic>))
+          .toList();
+    });
+  }
+
+  /// GET /api/help/faqs
+  Future<BaseResponse<List<FaqResponse>>> getFaqs() async {
+    final res = await _dio.get(Endpoints.faqs);
+    final decoded = res.data;
+
+    return BaseResponse.fromJson(decoded, (json) {
+      final list = (json as List);
+      return list
+          .map((e) => FaqResponse.fromJson(e as Map<String, dynamic>))
+          .toList();
+    });
+  }
+
+  /// GET /api/service-details?id={service_id}
+  Future<BaseResponse<ServiceDetailsResponse>> getServiceDetails(int serviceId) async {
+    final res = await _dio.get(
+      Endpoints.serviceDetails,
+      queryParameters: {'id': serviceId},
+    );
+    final decoded = res.data;
+
+    return BaseResponse.fromJson(decoded, (json) {
+      // json contains 'service' key
+      final serviceData = (json as Map)['service'] as Map<String, dynamic>;
+      return ServiceDetailsResponse.fromJson(serviceData);
+    });
+  }
+
+  /// GET /api/service-list
+  Future<BaseResponse<Map<String, dynamic>>> getServiceList({
+    String type = 'service',
+    int? vendorId,
+    int? subcategoryId,
+    String? search,
+    int perPage = 15,
+  }) async {
+    final queryParams = <String, dynamic>{
+      'type': type,
+      'per_page': perPage,
+    };
+    
+    if (vendorId != null) queryParams['vendor_id'] = vendorId;
+    if (subcategoryId != null) queryParams['subcategory_id'] = subcategoryId;
+    if (search != null && search.isNotEmpty) queryParams['search'] = search;
+
+    final res = await _dio.get(
+      Endpoints.serviceList,
+      queryParameters: queryParams,
+    );
+    final decoded = res.data;
+
+    return BaseResponse.fromJson(decoded, (json) {
+      return json as Map<String, dynamic>;
+    });
+  }
+
+  /// POST /api/service-update
+  Future<BaseResponse<Map<String, dynamic>>> updateService(Map<String, dynamic> data) async {
+    final res = await _dio.post(
+      Endpoints.serviceUpdate,
+      data: data,
+    );
+    final decoded = res.data;
+
+    return BaseResponse.fromJson(decoded, (json) {
+      return json as Map<String, dynamic>;
+    });
+  }
+
+  /// GET /api/details/booking?booking_id={booking_id}
+  Future<BaseResponse<Map<String, dynamic>>> getBookingDetails(int bookingId) async {
+    final res = await _dio.get(
+      Endpoints.bookingDetails,
+      queryParameters: {'booking_id': bookingId},
+    );
+    final decoded = res.data;
+
+    return BaseResponse.fromJson(decoded, (json) {
+      return json as Map<String, dynamic>;
+    });
+  }
+
+  /// GET /api/bookings/invoice?booking_id={booking_id}
+  Future<BaseResponse<BookingInvoiceResponse>> getBookingInvoice(int bookingId) async {
+    final res = await _dio.get(
+      Endpoints.bookingInvoice,
+      queryParameters: {'booking_id': bookingId},
+    );
+    final decoded = res.data;
+
+    return BaseResponse.fromJson(decoded, (json) {
+      return BookingInvoiceResponse.fromJson(json as Map<String, dynamic>);
+    });
+  }
+
+  /// POST /api/messages/send
+  Future<BaseResponse<Object?>> sendMessage(SendMessageRequest req) async {
+    final res = await _dio.post(
+      Endpoints.sendMessage,
+      data: req.toJson(),
+    );
+    final decoded = res.data;
+
+    return BaseResponse.fromJson(decoded, (json) => json);
+  }
+
+  /// GET /api/vendors (list all vendors)
+  Future<BaseResponse<Map<String, dynamic>>> getVendors({int perPage = 10}) async {
+    final res = await _dio.get(
+      Endpoints.vendors,
+      queryParameters: {'per_page': perPage},
+    );
+    final decoded = res.data;
+
+    return BaseResponse.fromJson(decoded, (json) {
+      return json as Map<String, dynamic>;
+    });
+  }
+
+  /// PUT /api/vendors/{id}
+  Future<BaseResponse<Map<String, dynamic>>> updateVendor(
+    int vendorId,
+    Map<String, dynamic> data,
+  ) async {
+    final res = await _dio.put(
+      '${Endpoints.vendors}/$vendorId',
+      data: data,
+    );
+    final decoded = res.data;
+
+    return BaseResponse.fromJson(decoded, (json) {
+      return json as Map<String, dynamic>;
+    });
+  }
+
+  /// DELETE /api/user/{id}
+  Future<BaseResponse<Object?>> deleteUser(int userId) async {
+    final res = await _dio.delete('${Endpoints.deleteUser}/$userId');
+    final decoded = res.data;
+
+    return BaseResponse.fromJson(decoded, (json) => json);
+  }
+
+  /// POST /api/bookings
+  Future<BaseResponse<List<Map<String, dynamic>>>> createBookings(
+    int userId,
+    List<int> shortlistIds,
+  ) async {
+    final res = await _dio.post(
+      Endpoints.bookings,
+      data: {
+        'user_id': userId,
+        'shortlist_ids': shortlistIds,
+      },
+    );
+    final decoded = res.data;
+
+    return BaseResponse.fromJson(decoded, (json) {
+      final list = (json as List);
+      return list.map((e) => e as Map<String, dynamic>).toList();
+    });
+  }
+
+  /// GET /api/bookings?user_id={user_id}
+  Future<BaseResponse<List<Map<String, dynamic>>>> getBookings(int userId) async {
+    final res = await _dio.get(
+      Endpoints.bookings,
+      queryParameters: {'user_id': userId},
+    );
+    final decoded = res.data;
+
+    return BaseResponse.fromJson(decoded, (json) {
+      final list = (json as List);
+      return list.map((e) => e as Map<String, dynamic>).toList();
+    });
+  }
+
+  /// DELETE /api/bookings
+  Future<BaseResponse<Map<String, dynamic>>> deleteBooking(
+    int userId,
+    int bookingId,
+  ) async {
+    final res = await _dio.delete(
+      Endpoints.bookings,
+      data: {
+        'user_id': userId,
+        'booking_id': bookingId,
+      },
+    );
+    final decoded = res.data;
+
+    return BaseResponse.fromJson(decoded, (json) {
+      return json as Map<String, dynamic>;
     });
   }
 

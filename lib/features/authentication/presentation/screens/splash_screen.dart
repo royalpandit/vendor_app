@@ -200,29 +200,43 @@ class _SplashScreenState extends State<SplashScreen> {
           ),
           // Positioned text
           Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'SevenOath', // Main text
-                  style: TextStyle(
-                    fontFamily: 'Onset',
-                    fontSize: 36,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black, // Adjust text color as per background
+            child: Container(
+              width: 300,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                spacing: 4,
+                children: [
+                  SizedBox(
+                    width: 300,
+                    child: Text(
+                      'SevenOath',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 40,
+                        fontFamily: 'Onest',
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
-                SizedBox(height: 10),
-                Text(
-                  'Vendor', // Sub text
-                  style: TextStyle(
-                    fontFamily: 'Onset',
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black, // Adjust text color as per background
+                  SizedBox(
+                    width: 300,
+                    child: Text(
+                      'Vendor',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: const Color(0xFF444242),
+                        fontSize: 18,
+                        fontFamily: 'Onest',
+                        fontWeight: FontWeight.w400,
+                        height: 1.33,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],

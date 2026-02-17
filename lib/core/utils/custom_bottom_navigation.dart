@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:vendor_app/core/utils/app_colors.dart';
 import 'package:vendor_app/core/utils/app_icons.dart';
 import 'package:vendor_app/features/booking/presentation/screens/booking_screen.dart';
 import 'package:vendor_app/features/chat/presentation/screens/inbox_screen.dart';
@@ -19,6 +18,12 @@ class CustomBottomNavigation extends StatefulWidget {
 
 class _CustomBottomNavigationState extends State<CustomBottomNavigation> {
   int _selectedIndex = 0; // Track selected index
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.currentIndex; // Initialize with passed currentIndex
+  }
 
   // Paths to the default icons
   final List<String> _iconPaths = [
