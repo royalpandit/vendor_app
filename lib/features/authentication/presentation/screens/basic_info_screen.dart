@@ -276,7 +276,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
             style: TextStyle(
               fontFamily: 'OnestSemiBold',
               fontSize: 24,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
               color: Colors.black,
             ),
           ),
@@ -344,7 +344,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text(
             'Business Info',
-            style: TextStyle(fontFamily: 'OnestSemiBold', fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+            style: TextStyle(fontFamily: 'OnestSemiBold', fontSize: 24, fontWeight: FontWeight.w600, color: Colors.black),
           ),
           const SizedBox(height: 10),
           const Text(
@@ -424,7 +424,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text(
             'Service Info',
-            style: TextStyle(fontFamily: 'OnestSemiBold', fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+            style: TextStyle(fontFamily: 'OnestSemiBold', fontSize: 24, fontWeight: FontWeight.w600, color: Colors.black),
           ),
           const SizedBox(height: 10),
           const Text(
@@ -441,7 +441,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
             style: TextStyle(
               fontFamily: 'OnestMedium',
               fontSize: 16,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w500,
               color: AppColors.labelColor,
             ),
           ),
@@ -462,7 +462,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
           const SizedBox(height: 10),
           Text(
             '₹${_minPrice.toStringAsFixed(0)} - ₹${_maxPrice.toStringAsFixed(0)}',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.labelColor),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.labelColor),
           ),
           const SizedBox(height: 15),
 
@@ -503,7 +503,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Text(
           'Document Upload',
-          style: TextStyle(fontFamily: 'OnestSemiBold', fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+          style: TextStyle(fontFamily: 'OnestSemiBold', fontSize: 24, fontWeight: FontWeight.w600, color: Colors.black),
         ),
         const SizedBox(height: 10),
         const Text(
@@ -593,7 +593,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
             style: const TextStyle(
               fontFamily: 'OnestMedium',
               fontSize: 16,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w500,
               color: AppColors.labelColor,
             )),
         const SizedBox(height: 8),
@@ -635,7 +635,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
           style: const TextStyle(
             fontFamily: 'OnestMedium',
             fontSize: 16,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w500,
             color: AppColors.labelColor,
           )),
       const SizedBox(height: 8),
@@ -676,7 +676,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
           style: const TextStyle(
             fontFamily: 'OnestMedium',
             fontSize: 16,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w500,
             color: AppColors.labelColor,
           )),
       const SizedBox(height: 8),
@@ -783,7 +783,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
               style: TextStyle(
                 fontFamily: 'OnestSemiBold',
                 fontSize: 24,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
                 color: Colors.black,
               ),
             ),
@@ -886,7 +886,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
               style: TextStyle(
                 fontFamily: 'OnestSemiBold',
                 fontSize: 24,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
                 color: Colors.black,
               ),
             ),
@@ -995,7 +995,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
               style: TextStyle(
                 fontFamily: 'OnestSemiBold',
                 fontSize: 24,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
                 color: Colors.black,
               ),
             ),
@@ -1032,7 +1032,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                   style: TextStyle(
                     fontFamily: 'OnestMedium',
                     fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w500,
                     color: AppColors.labelColor,
                   ),
                 ),
@@ -1068,7 +1068,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                   '₹${_minPrice.toStringAsFixed(0)} - ₹${_maxPrice.toStringAsFixed(0)}',
                   style: TextStyle(
                     fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
                     color: AppColors.labelColor,
                   ),
                 ),
@@ -1131,7 +1131,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
             style: TextStyle(
               fontFamily: 'OnestSemiBold',
               fontSize: 24,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
               color: Colors.black,
             ),
           ),
@@ -1253,7 +1253,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
           style: const TextStyle(
             fontFamily: 'OnestMedium',
             fontSize: 16,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w500,
             color: AppColors.labelColor,
           ),
         ),
@@ -1308,7 +1308,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
           style: const TextStyle(
             fontFamily: 'OnestMedium',
             fontSize: 16,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w500,
             color: AppColors.labelColor,
           ),
         ),

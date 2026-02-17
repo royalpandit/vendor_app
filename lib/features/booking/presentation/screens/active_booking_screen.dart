@@ -494,7 +494,7 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
                           '#BK-$bookingId',
                           style: const TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                         Container(
@@ -517,7 +517,7 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
                       clientName,
                       style: const TextStyle(
                         fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
 
@@ -568,13 +568,13 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
                       children: [
                         const Text(
                           "Budget",
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          style: TextStyle(fontWeight: FontWeight.w500),
                         ),
                         Text(
                           "₹$budget",
                           style: const TextStyle(
                             fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
@@ -654,7 +654,7 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
                       "Mark as Complete",
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w500,
                         color: Colors.white,
                       ),
                     ),

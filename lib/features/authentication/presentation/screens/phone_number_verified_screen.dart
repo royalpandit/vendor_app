@@ -148,7 +148,7 @@ class _PhoneNumberVerifiedScreenState extends State<PhoneNumberVerifiedScreen> {
                         color: Colors.black,
                         fontSize: 24,
                         fontFamily: 'OnestSemiBold',
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                         height: 1.33,
                         letterSpacing: -0.55,
                       ),

@@ -273,7 +273,7 @@ class ChatScreen extends StatelessWidget {
                       name,
                       style: TextStyle(
                         fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     Text(

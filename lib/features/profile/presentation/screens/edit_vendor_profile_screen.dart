@@ -304,7 +304,7 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
               style: TextStyle(
                 fontFamily: 'OnestSemiBold',
                 fontSize: 24,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
                 color: Colors.black,
               ),
             ),
@@ -390,7 +390,7 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
               style: TextStyle(
                 fontFamily: 'OnestSemiBold',
                 fontSize: 24,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
                 color: Colors.black,
               ),
             ),
@@ -480,7 +480,7 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
               style: TextStyle(
                 fontFamily: 'OnestSemiBold',
                 fontSize: 24,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
                 color: Colors.black,
               ),
             ),
@@ -576,7 +576,7 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
             style: TextStyle(
               fontFamily: 'OnestSemiBold',
               fontSize: 24,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
               color: Colors.black,
             ),
           ),
