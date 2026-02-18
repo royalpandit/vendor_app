@@ -12,6 +12,7 @@ import 'package:vendor_app/features/home/presentation/screens/home_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:vendor_app/core/utils/app_message.dart';
 
 
 class BasicInfoScreen extends StatefulWidget {
@@ -83,7 +84,8 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
 
   void _showMsg(String msg) {
     if (!mounted || msg.isEmpty) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    // ignore: unawaited_futures
+    AppMessage.show(context, msg);
   }
 
   // -------- IMAGE PICK + UPLOAD (master-image-upload) ----------
@@ -98,7 +100,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
 
       final uploadProv = context.read<AuthProvider>();
       await uploadProv.upload(picked.path, folder);
-      debugPrint('picked: ${picked?.path}');
+      // image picked
       final resp = uploadProv.last;
       if (resp == null) {
         _showMsg(uploadProv.message ?? 'Upload failed');
@@ -110,10 +112,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
         onUploaded(resp.path); // ✅ यहीं state में set
       });
 
-       _showMsg(resp.message);
-      debugPrint('BUSINESS PATH: $_businessPhotoPath');
-      debugPrint('AADHAR PATH: $_adharPhotoPath');
-      debugPrint('CERT PATH: $_certificatePhotoPath');
+      _showMsg(resp.message);
     //  setState(() {}); // to refresh uploaded state UI
     } on PlatformException catch (e) {
       _showMsg('Picker error: ${e.message}');
@@ -138,9 +137,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
       setState(() { onUploaded(resp.path); }); // ← यहीं state में set
       _showMsg(resp.message);
 
-      debugPrint('BUSINESS PATH: $_businessPhotoPath');
-      debugPrint('AADHAR PATH: $_adharPhotoPath');
-      debugPrint('CERT PATH: $_certificatePhotoPath');
+      // upload paths set
     } catch (e) {
       _showMsg('Upload error: $e');
     }

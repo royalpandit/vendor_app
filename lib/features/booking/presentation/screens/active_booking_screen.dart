@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:vendor_app/core/network/token_storage.dart';
 import 'package:provider/provider.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
+import 'package:vendor_app/core/utils/app_message.dart';
+import 'package:vendor_app/features/chat/presentation/screens/chat_screen.dart';
 
 class ActiveBookingsScreen extends StatefulWidget {
   @override
@@ -28,7 +30,7 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
       authProvider.fetchActiveBookings(userId); // Fetch active bookings
     } else {
       // Handle case where userId is not found or user is not logged in
-      print("User ID not found");
+      // silently ignore
     }
   }
 
@@ -79,9 +81,9 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
                         'Active Bookings',
                         style: TextStyle(
                           color: Colors.black,
-                          fontSize: 24,
+                          fontSize: 20,
                           fontFamily: 'Onest',
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w400,
                           height: 1.33,
                           letterSpacing: -0.55,
                         ),
@@ -128,7 +130,7 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
                                   hintText: 'Search for bookings',
                                   hintStyle: TextStyle(
                                     color: const Color(0x4737383C),
-                                    fontSize: 16,
+                                    fontSize: 14,
                                     fontFamily: 'Onest',
                                     fontWeight: FontWeight.w400,
                                     height: 1.50,
@@ -139,7 +141,7 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
                                   contentPadding: EdgeInsets.zero,
                                 ),
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 14,
                                   fontFamily: 'Onest',
                                   fontWeight: FontWeight.w400,
                                 ),
@@ -162,10 +164,19 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
                               return Center(child: Text('No active bookings available.'));
                             }
 
+                            // Filter to show only confirmed bookings
+                            final confirmedBookings = authProvider.activeBookingsModels!
+                                .where((booking) => booking.status.toLowerCase() == 'confirmed')
+                                .toList();
+
+                            if (confirmedBookings.isEmpty) {
+                              return Center(child: Text('No confirmed bookings available.'));
+                            }
+
                             return ListView.builder(
-                              itemCount: authProvider.activeBookingsModels?.length ?? 0,
+                              itemCount: confirmedBookings.length,
                               itemBuilder: (context, index) {
-                                final booking = authProvider.activeBookingsModels![index];
+                                final booking = confirmedBookings[index];
                                 return _buildBookingCard(
                                   bookingId: booking.id,
                                   clientName: booking.user.name,
@@ -174,6 +185,8 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
                                   date: booking.eventDate,
                                   location: booking.address,
                                   status: booking.status,
+                                  userId: booking.user.id,
+                                  userImage: booking.user.image,
                                 );
                               },
                             );
@@ -200,21 +213,36 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
     required String date,
     required String location,
     required String status,
+    required int userId,
+    required String userImage,
   }) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: ShapeDecoration(
-        color: const Color(0xFFFAFAFA),
-        shape: RoundedRectangleBorder(
-          side: BorderSide(
-            width: 1,
-            color: const Color(0xFFF4F4F4),
+    return GestureDetector(
+      onTap: () {
+        _showCompleteBottomSheet(
+          context,
+          bookingId,
+          clientName,
+          service,
+          budget,
+          date,
+          location,
+          status,
+        );
+      },
+      child: Container(
+        margin: EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: ShapeDecoration(
+          color: const Color(0xFFFAFAFA),
+          shape: RoundedRectangleBorder(
+            side: BorderSide(
+              width: 1,
+              color: const Color(0xFFF4F4F4),
+            ),
+            borderRadius: BorderRadius.circular(12),
           ),
-          borderRadius: BorderRadius.circular(12),
         ),
-      ),
-      child: Column(
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Booking ID
@@ -222,7 +250,7 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
             '#BK-$bookingId',
             style: TextStyle(
               color: Colors.black,
-              fontSize: 16,
+              fontSize: 13,
               fontFamily: 'Onest',
               fontWeight: FontWeight.w400,
               height: 1.50,
@@ -251,9 +279,9 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
                         clientName,
                         style: TextStyle(
                           color: Colors.black,
-                          fontSize: 18,
+                          fontSize: 15,
                           fontFamily: 'Onest',
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w400,
                           height: 1.33,
                         ),
                       ),
@@ -262,9 +290,9 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
                         service,
                         style: TextStyle(
                           color: Colors.black.withOpacity(0.70),
-                          fontSize: 12,
+                          fontSize: 11,
                           fontFamily: 'Onest',
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w400,
                           height: 1.17,
                         ),
                       ),
@@ -278,7 +306,7 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
                       'Budget',
                       style: TextStyle(
                         color: Colors.black.withOpacity(0.60),
-                        fontSize: 10,
+                        fontSize: 9,
                         fontFamily: 'Onest',
                         fontWeight: FontWeight.w400,
                         height: 1.80,
@@ -289,9 +317,9 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
                       '₹$budget',
                       style: TextStyle(
                         color: const Color(0xFF171719),
-                        fontSize: 16,
+                        fontSize: 14,
                         fontFamily: 'Onest',
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                         height: 1.25,
                       ),
                     ),
@@ -305,45 +333,56 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Image.asset(
-                    'assets/icons/calendar.png',
-                    width: 18,
-                    height: 18,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    date,
-                    style: TextStyle(
-                      color: const Color(0xFF171719),
-                      fontSize: 12,
-                      fontFamily: 'Onest',
-                      fontWeight: FontWeight.w400,
-                      height: 1.50,
+              Flexible(
+                child: Row(
+                  children: [
+                    Image.asset(
+                      'assets/icons/calendar.png',
+                      width: 16,
+                      height: 16,
                     ),
-                  ),
-                ],
+                    SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        date,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: const Color(0xFF171719),
+                          fontSize: 11,
+                          fontFamily: 'Onest',
+                          fontWeight: FontWeight.w400,
+                          height: 1.50,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              Row(
-                children: [
-                  Image.asset(
-                    'assets/icons/location.png',
-                    width: 18,
-                    height: 18,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    location,
-                    style: TextStyle(
-                      color: const Color(0xFF171719),
-                      fontSize: 12,
-                      fontFamily: 'Onest',
-                      fontWeight: FontWeight.w400,
-                      height: 1.50,
+              SizedBox(width: 8),
+              Flexible(
+                child: Row(
+                  children: [
+                    Image.asset(
+                      'assets/icons/location.png',
+                      width: 16,
+                      height: 16,
                     ),
-                  ),
-                ],
+                    SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        location,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: const Color(0xFF171719),
+                          fontSize: 11,
+                          fontFamily: 'Onest',
+                          fontWeight: FontWeight.w400,
+                          height: 1.50,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -353,8 +392,42 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
             children: [
               // Message Button
               GestureDetector(
-                onTap: () {
-                  // Handle message action
+                onTap: () async {
+                  // Navigate to chat with this user
+                  final userData = await TokenStorage.getUserData();
+                  final vendorId = userData?.id ?? 0;
+                  
+                  if (vendorId != 0) {
+                    // Fetch inbox to find existing conversation
+                    final authProvider = context.read<AuthProvider>();
+                    await authProvider.fetchInboxMessages(vendorId);
+                    
+                    // Try to find existing conversation with this user
+                    int conversationId = 0;
+                    final inboxMessages = authProvider.inboxMessages;
+                    for (var conversation in inboxMessages) {
+                      // Check if this conversation involves the user
+                      final isSender = conversation.sender.id == vendorId;
+                      final otherPersonId = isSender ? conversation.receiver.id : conversation.sender.id;
+                      if (otherPersonId == userId) {
+                        conversationId = conversation.id;
+                        break;
+                      }
+                    }
+                    
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChatScreen(
+                          name: clientName,
+                          image: userImage,
+                          conversationId: conversationId,
+                          receiverId: userId,
+                          senderId: vendorId,
+                        ),
+                      ),
+                    );
+                  }
                 },
                 child: Container(
                   width: 60,
@@ -376,24 +449,25 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
                 ),
               ),
               SizedBox(width: 16),
-              // Mark as Complete Button
-              Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    _showCompleteBottomSheet(
-                      context,
-                      bookingId,
-                      clientName,
-                      service,
-                      budget,
-                      date,
-                      location,
-                      status,
-                    );
-                  },
+              // Mark as Complete Button - Only show if not completed or cancelled
+              if (status.toLowerCase() != 'completed' && status.toLowerCase() != 'cancelled' && status.toLowerCase() != 'reject')
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      _showCompleteBottomSheet(
+                        context,
+                        bookingId,
+                        clientName,
+                        service,
+                        budget,
+                        date,
+                        location,
+                        status,
+                      );
+                    },
                   child: Container(
                     height: 40,
-                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: ShapeDecoration(
                       color: const Color(0xFF14A38B),
                       shape: RoundedRectangleBorder(
@@ -410,20 +484,22 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
                           ),
                           child: Image.asset(
                             'assets/icons/tick-circle.png',
-                            width: 24,
-                            height: 24,
+                            width: 20,
+                            height: 20,
                           ),
                         ),
                         SizedBox(width: 6),
-                        Text(
-                          'Mark as Complete',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontFamily: 'Onest',
-                            fontWeight: FontWeight.w500,
-                            height: 1.50,
-                            letterSpacing: 0.09,
+                        Flexible(
+                          child: Text(
+                            'Mark as Complete',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontFamily: 'Onest',
+                              fontWeight: FontWeight.w500,
+                              height: 1.2,
+                            ),
                           ),
                         ),
                       ],
@@ -434,6 +510,7 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
             ],
           ),
         ],
+      ),
       ),
     );
   }
@@ -536,27 +613,44 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Image.asset(
-                              'assets/icons/calendar.png',
-                              width: 16,
-                              height: 16,
-                            ),
-                            const SizedBox(width: 5),
-                            Text(date, style: const TextStyle(color: Colors.grey)),
-                          ],
+                        Flexible(
+                          child: Row(
+                            children: [
+                              Image.asset(
+                                'assets/icons/calendar.png',
+                                width: 16,
+                                height: 16,
+                              ),
+                              const SizedBox(width: 5),
+                              Flexible(
+                                child: Text(
+                                  date,
+                                  style: const TextStyle(color: Colors.grey),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        Row(
-                          children: [
-                            Image.asset(
-                              'assets/icons/location.png',
-                              width: 16,
-                              height: 16,
-                            ),
-                            const SizedBox(width: 5),
-                            Text(location, style: const TextStyle(color: Colors.grey)),
-                          ],
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Row(
+                            children: [
+                              Image.asset(
+                                'assets/icons/location.png',
+                                width: 16,
+                                height: 16,
+                              ),
+                              const SizedBox(width: 5),
+                              Flexible(
+                                child: Text(
+                                  location,
+                                  style: const TextStyle(color: Colors.grey),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -585,24 +679,48 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
 
               const SizedBox(height: 20),
 
-              /// Close Button
-              OutlinedButton(
-                onPressed: () => Navigator.pop(context),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red,
-                  side: const BorderSide(color: Colors.red),
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              // Only show action buttons if status is not completed or cancelled
+              if (status.toLowerCase() != 'completed' && status.toLowerCase() != 'cancelled' && status.toLowerCase() != 'reject') ...[
+                /// Cancel Button
+                OutlinedButton(
+                  onPressed: () async {
+                    final provider = context.read<AuthProvider>();
+
+                    Navigator.pop(context);
+
+                    final result = await provider.updateBookingStatus(
+                      bookingId: bookingId,
+                      action: "reject",
+                    );
+
+                    if (result) {
+                      // ignore: unawaited_futures
+                      AppMessage.show(context, "Booking cancelled");
+
+                      final user = await TokenStorage.getUserData();
+                      if (user?.id != null) {
+                        provider.fetchActiveBookings(user!.id!);
+                      }
+                    } else {
+                      // ignore: unawaited_futures
+                      AppMessage.show(context, provider.message ?? "Failed");
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red),
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
+                  child: const Text("Cancel"),
                 ),
-                child: const Text("Close"),
-              ),
 
-              const SizedBox(height: 15),
+                const SizedBox(height: 15),
 
-              /// Confirm Complete
-              ElevatedButton(
+                /// Confirm Complete
+                ElevatedButton(
                 onPressed: () async {
                   final provider = context.read<AuthProvider>();
 
@@ -610,22 +728,20 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
 
                   final result = await provider.updateBookingStatus(
                     bookingId: bookingId,
-                    action: "confirmed",
+                    action: "completed",
                   );
 
                   if (result) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Booking marked as completed")),
-                    );
+                    // ignore: unawaited_futures
+                    AppMessage.show(context, "Booking marked as completed");
 
                     final user = await TokenStorage.getUserData();
                     if (user?.id != null) {
                       provider.fetchActiveBookings(user!.id!);
                     }
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(provider.message ?? "Failed")),
-                    );
+                    // ignore: unawaited_futures
+                    AppMessage.show(context, provider.message ?? "Failed");
                   }
                 },
                 style: ElevatedButton.styleFrom(
@@ -663,9 +779,35 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
               ),
 
               const SizedBox(height: 20),
+            ] else ...[
+              // Show message when booking is already completed
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green, size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        "This booking is already completed",
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
             ],
-          ),
-        );
+          ],
+        ),
+      );
       },
     );
   }

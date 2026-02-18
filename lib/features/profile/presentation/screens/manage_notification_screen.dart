@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:vendor_app/core/network/token_storage.dart';
 import 'package:vendor_app/core/utils/app_icons.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
+import 'package:vendor_app/core/utils/app_message.dart';
 import 'package:vendor_app/features/profile/data/models/request/notification_settings_request.dart';
 
 class ManageNotificationScreen extends StatefulWidget {
@@ -334,11 +335,7 @@ class _ManageNotificationScreenState extends State<ManageNotificationScreen> {
   }
 
   void _showMsg(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: const Color(0xFF2B2D42),
-      ),
-    );
+    // ignore: unawaited_futures
+    AppMessage.show(context, message);
   }
 }

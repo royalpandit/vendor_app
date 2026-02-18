@@ -46,6 +46,7 @@ class Endpoints {
   static const inboxMessages = '/api/user/inbox';
   static const conversationMessages = '/api/conversation/messages'; // ?conversation_id=
   static const sendMessage = '/api/messages/send';
+  static const markMessagesRead = '/api/messages/read';
   
   // Location
   static const states = '/api/states';

@@ -1,42 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:provider/provider.dart';
 import 'package:vendor_app/core/network/token_storage.dart';
 import 'package:vendor_app/core/router/route_paths.dart';
 import 'package:vendor_app/core/session/session.dart';
 import 'package:vendor_app/core/utils/app_icons.dart';
-import 'package:vendor_app/features/authentication/presentation/screens/basic_info_screen.dart';
-import 'package:vendor_app/features/authentication/presentation/screens/phone_number_verified_screen.dart';
-import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart'; // NEW
-
+import 'package:vendor_app/core/utils/app_theme.dart';
+import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
 
 class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
   @override
   _SplashScreenState createState() => _SplashScreenState();
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-
   @override
   void initState() {
     super.initState();
-    // UPDATED: पहले सीधे _checkUserLoginStatus() था
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _runStartupFlow(); // NEW
+      await _runStartupFlow();
     });
   }
 
-  // ------------------ STARTUP FLOW (NEW) ------------------
+  // ------------------ STARTUP FLOW ------------------
   Future<void> _runStartupFlow() async {
-    // 1) Ensure location permission
     final granted = await _ensureLocationPermission();
     if (!mounted) return;
 
     if (!granted) {
-      // परमिशन नहीं मिली—blocking dialog के साथ दो विकल्प
       await _showBlockingDialog(
         title: 'Location Required',
-        message:
-        'Nearby services दिखाने के लिए लोकेशन जरूरी है। कृपया परमिशन Allow करें।',
+        message: 'Nearby services दिखाने के लिए लोकेशन जरूरी है। कृपया परमिशन Allow करें।',
         positive: 'Try Again',
         onPositive: () async {
           Navigator.of(context).pop();
@@ -53,41 +49,36 @@ class _SplashScreenState extends State<SplashScreen> {
       return;
     }
 
-    // 2) Try to fetch current position (optional)
     try {
       final pos = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
-      // आप चाहें तो यहाँ pos को किसी shared singleton/Service में स्टोर कर लें
-      // e.g., LocationCache.lastPosition = pos;
-      debugPrint('📍 Vendor pos: ${pos.latitude}, ${pos.longitude}');
+      // vendor position captured
     } catch (e) {
-      // ignore/log
-      debugPrint('⚠️ getCurrentPosition error: $e');
+      // ignore location errors
     }
 
-    // 3) Small delay for smoothness
-    await Future.delayed(const Duration(milliseconds: 600));
+    await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
 
-    // 4) Decide next route based on login status
-    await _checkUserLoginStatus(); // वही मेथड, बस Session.token sync जोड़ दिया है
+    await _checkUserLoginStatus();
   }
 
-  // ------------------ LOGIN CHECK (slightly UPDATED) ------------------
-
+  // ------------------ LOGIN CHECK ------------------
   Future<void> _checkUserLoginStatus() async {
-    // Fetch token and user data
     final token = await TokenStorage.getToken();
     final userData = await TokenStorage.getUserData();
 
-    // Keep memory Session.token in sync (useful for interceptors)
     if (token != null && token.isNotEmpty) {
-      Session.token = token; // NEW
+      Session.token = token;
     }
 
+    if (!mounted) return;
+
     if (token != null && token.isNotEmpty && userData != null) {
-      // Navigate to home screen if token and user data are available
+      // User is logged in - preload all data
+      await _preloadUserData(userData.id ?? 0);
+      
       if (!mounted) return;
       Navigator.pushReplacementNamed(
         context,
@@ -95,15 +86,34 @@ class _SplashScreenState extends State<SplashScreen> {
         arguments: 0,
       );
     } else {
-      // Navigate to phone verification screen if no token or user data is found
-      if (!mounted) return;
       Navigator.pushReplacementNamed(context, RoutePaths.phoneVerify);
     }
   }
 
-  // ------------------ PERMISSION HELPERS (NEW) ------------------
+  // ------------------ PRELOAD DATA ------------------
+  Future<void> _preloadUserData(int userId) async {
+    try {
+      final authProvider = context.read<AuthProvider>();
+      
+      // Preload all essential data in parallel
+      await Future.wait([
+        authProvider.fetchVendorDashboard(userId),
+        authProvider.fetchVendorDetails(userId),
+        authProvider.fetchActiveBookings(userId),
+        authProvider.fetchBookingLeads(userId),
+        authProvider.fetchInboxMessages(userId),
+        authProvider.fetchNotificationSettings(userId),
+      ]);
+      
+      // user data preloaded successfully
+    } catch (e) {
+      // error preloading user data
+      // Continue anyway - screens will load data if needed
+    }
+  }
+
+  // ------------------ PERMISSION HELPERS ------------------
   Future<bool> _ensureLocationPermission() async {
-    // Ensure services ON
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       await _showInfoDialog(
@@ -115,14 +125,10 @@ class _SplashScreenState extends State<SplashScreen> {
       if (!await Geolocator.isLocationServiceEnabled()) return false;
     }
 
-    // Check permission state
     var permission = await Geolocator.checkPermission();
-
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        return false;
-      }
+      if (permission == LocationPermission.denied) return false;
     }
 
     if (permission == LocationPermission.deniedForever) {
@@ -134,17 +140,11 @@ class _SplashScreenState extends State<SplashScreen> {
       );
       return false;
     }
-
-    // whileInUse / always
     return true;
   }
 
-  Future<void> _showInfoDialog(
-      String title,
-      String message, {
-        String actionText = 'OK',
-        Future<void> Function()? onAction,
-      }) async {
+  Future<void> _showInfoDialog(String title, String message, {String actionText = 'OK', Future<void> Function()? onAction}) async {
+    if (!mounted) return;
     await showDialog(
       context: context,
       barrierDismissible: false,
@@ -164,14 +164,8 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 
-  Future<void> _showBlockingDialog({
-    required String title,
-    required String message,
-    required String positive,
-    required VoidCallback onPositive,
-    required String negative,
-    required VoidCallback onNegative,
-  }) async {
+  Future<void> _showBlockingDialog({required String title, required String message, required String positive, required VoidCallback onPositive, required String negative, required VoidCallback onNegative}) async {
+    if (!mounted) return;
     await showDialog(
       context: context,
       barrierDismissible: false,
@@ -185,54 +179,54 @@ class _SplashScreenState extends State<SplashScreen> {
       ),
     );
   }
-  // ------------------ /PERMISSION HELPERS ------------------
 
   @override
   Widget build(BuildContext context) {
+    // Get screen size for responsiveness
+    final size = MediaQuery.of(context).size;
+    final double screenWidth = size.width;
+
     return Scaffold(
       body: Stack(
-        fit: StackFit.expand, // Makes the image fill the screen
+        fit: StackFit.expand,
         children: [
           // Background image
           Image.asset(
-            AppIcons.splashBg, // Add your background image path here
-            fit: BoxFit.cover, // Ensures the image covers the entire screen
+            AppIcons.splashBg,
+            fit: BoxFit.cover,
           ),
-          // Positioned text
+          // Centered Content
           Center(
-            child: Container(
-              width: 300,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                spacing: 4,
                 children: [
-                  SizedBox(
-                    width: 300,
-                    child: Text(
-                      'SevenOath',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 40,
-                        fontFamily: 'Onest',
-                        fontWeight: FontWeight.w600,
-                      ),
+                  Text(
+                    'SevenOath',
+                    textAlign: TextAlign.center,
+                    style: AppTheme.heading1.copyWith(
+                      fontSize: (screenWidth * 0.1).clamp(32, 48),
+                      letterSpacing: -0.5,
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Vendor',
+                    textAlign: TextAlign.center,
+                    style: AppTheme.bodyLarge.copyWith(
+                      fontSize: (screenWidth * 0.045).clamp(16, 20),
+                      color: const Color(0xFF444242),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  // Loading indicator
                   SizedBox(
-                    width: 300,
-                    child: Text(
-                      'Vendor',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: const Color(0xFF444242),
-                        fontSize: 18,
-                        fontFamily: 'Onest',
-                        fontWeight: FontWeight.w400,
-                        height: 1.33,
-                      ),
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryPink),
                     ),
                   ),
                 ],
@@ -244,5 +238,3 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
-
-

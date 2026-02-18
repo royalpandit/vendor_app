@@ -9,6 +9,8 @@ import 'package:vendor_app/core/network/token_storage.dart';
 import 'package:vendor_app/core/router/route_paths.dart';
 import 'package:vendor_app/core/utils/app_icons.dart';
 import 'package:vendor_app/core/utils/custom_bottom_navigation.dart';
+import 'package:vendor_app/core/utils/app_message.dart';
+import 'package:vendor_app/core/utils/skeleton_loader.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
 import 'package:vendor_app/features/profile/data/models/request/user_portfolio_request.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/vendor_details_model.dart';
@@ -45,27 +47,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return;
       }
       final vendorId = user.id ?? 0;
-      await context.read<AuthProvider>().fetchVendorDetails(vendorId);
-      vendor = context.read<AuthProvider>().vendorDetails;
+      final prov = context.read<AuthProvider>();
+      // If provider already has vendor details, reuse them to avoid reloading
+      if (prov.vendorDetails != null) {
+        vendor = prov.vendorDetails;
+        setState(() {});
+        return;
+      }
+
+      await prov.fetchVendorDetails(vendorId);
+      vendor = prov.vendorDetails;
       setState(() {});
       if (vendor == null) return;
-
-      final businessCategoryJson = vendor!.businessCategory?.toJson();
-      final map = {
-        'name': vendor!.name,
-        'phone': vendor!.phone,
-        'email': vendor!.email,
-        'business_name': vendor!.businessName,
-        'business_category': businessCategoryJson,
-        'business_category_id': vendor!.categoryId,
-        'business_category_name': vendor!.categoryName,
-        'business_photo': vendor!.businessPhoto,
-        'latitude': vendor!.latitude,
-        'longitude': vendor!.longitude,
-      };
-      debugPrint('VendorDetails (map): ${const JsonEncoder.withIndent("  ").convert(map)}');
     } catch (e) {
-      debugPrint('fetchVendorDetails error: $e');
       _showMsg('Failed to fetch vendor details');
     }
   }
@@ -77,8 +71,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
     final int userId = user.id ?? 0;
-    await context.read<AuthProvider>().getUserPortfolio(userId);
-    final response = context.read<AuthProvider>().userPortfolio;
+    final prov = context.read<AuthProvider>();
+    if (prov.userPortfolio.isNotEmpty) {
+      final response = prov.userPortfolio;
+      setState(() {
+        portfolioImages = response.map((p) => p.fullUrl).toList();
+      });
+      return;
+    }
+
+    await prov.getUserPortfolio(userId);
+    final response = prov.userPortfolio;
     setState(() {
       portfolioImages = response.map((p) => p.fullUrl).toList();
     });
@@ -119,7 +122,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _showMsg(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    // ignore: unawaited_futures
+    AppMessage.show(context, message);
   }
 
   @override

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:provider/provider.dart';
-import 'package:vendor_app/core/network/api_result.dart';
-import 'package:vendor_app/core/network/base_response.dart';
 import 'package:vendor_app/core/network/token_storage.dart';
-import 'package:vendor_app/core/utils/app_colors.dart';
-import 'package:vendor_app/core/utils/app_icons.dart';
 import 'package:vendor_app/core/utils/custom_bottom_navigation.dart';
+import 'package:vendor_app/core/utils/skeleton_loader.dart';
+import 'package:vendor_app/core/utils/app_message.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
 import 'package:vendor_app/features/chat/data/model/resposen/inbox_response.dart';
 import 'package:vendor_app/features/chat/presentation/screens/chat_screen.dart';
@@ -18,7 +17,7 @@ class InboxScreen extends StatefulWidget {
 }
 class _InboxScreenState extends State<InboxScreen> {
   bool isLoading = false; // To manage the loading state
-  late int userId; // To store user ID
+  int userId = 0; // To store user ID
 
   List<InboxResponse> messages = [];
   String currentTab = 'All';
@@ -26,19 +25,36 @@ class _InboxScreenState extends State<InboxScreen> {
   @override
   void initState() {
     super.initState();
-    _getUserIdFromStorage(); // Get the user ID when the screen is initialized
+    // Load once on init and show skeleton until data arrives
+    _getUserIdFromStorage();
   }
 
   // Fetch user ID from TokenStorage
   Future<void> _getUserIdFromStorage() async {
     final userData = await TokenStorage.getUserData();
-    userId = userData?.id ?? 0;
+    final int uid = userData?.id ?? 0;
+    setState(() {
+      userId = uid;
+    });
     final authProvider = context.read<AuthProvider>();
 
-    // Fetch the vendor details, dashboard data and messages after getting the userId
-    await authProvider.fetchVendorDetails(userId);
-    await authProvider.fetchVendorDashboard(userId);
-    await _fetchInboxMessages(authProvider);
+    // Fetch vendor details and dashboard only if not already loaded
+    if (authProvider.vendorDetails == null) {
+      await authProvider.fetchVendorDetails(userId);
+    }
+    if (authProvider.dashboardData == null) {
+      await authProvider.fetchVendorDashboard(userId);
+    }
+
+    // Use cached inbox data if available to avoid showing empty state repeatedly
+    if (authProvider.inboxMessages.isNotEmpty) {
+      setState(() {
+        messages = authProvider.inboxMessages;
+        isLoading = false;
+      });
+    } else {
+      await _fetchInboxMessages(authProvider);
+    }
   }
 
   // Fetch Inbox Messages from API
@@ -59,17 +75,27 @@ class _InboxScreenState extends State<InboxScreen> {
       setState(() {
         isLoading = false;
       });
-      _showMsg('Failed to fetch inbox messages');
+      // show error via app message
+      AppMessage.show(context, 'Failed to fetch inbox messages');
     }
   }
 
   // Helper function to show messages
   void _showMsg(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    // ignore: unawaited_futures
+    AppMessage.show(context, message);
   }
 
   @override
   Widget build(BuildContext context) {
+    ImageProvider _avatarProvider(String path) {
+      const storageBase = 'https://sevenoath.shofus.com/storage/';
+      if (path.isEmpty) return const AssetImage('assets/images/placeholder_user.png');
+      if (path.startsWith('http')) return NetworkImage(path);
+      if (path.startsWith('assets/')) return AssetImage(path);
+      return NetworkImage('$storageBase$path');
+    }
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -96,9 +122,9 @@ class _InboxScreenState extends State<InboxScreen> {
                           'Welcome Back, ${authProvider.vendorDetails?.name ?? 'Vendor'}',
                           style: TextStyle(
                             color: const Color(0xFF171719),
-                            fontSize: 32,
+                            fontSize: 26,
                             fontFamily: 'Onest',
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                             height: 1.13,
                           ),
                         );
@@ -112,7 +138,7 @@ class _InboxScreenState extends State<InboxScreen> {
                           '${authProvider.dashboardData?.totalLeads ?? 0} new leads are waiting for you! 🔥',
                           style: TextStyle(
                             color: const Color(0xFF5C5C5C),
-                            fontSize: 16,
+                            fontSize: 14,
                             fontFamily: 'Onest',
                             fontWeight: FontWeight.w400,
                           ),
@@ -147,7 +173,7 @@ class _InboxScreenState extends State<InboxScreen> {
                                 hintText: 'Search for Chats',
                                 hintStyle: TextStyle(
                                   color: const Color(0x4737383C),
-                                  fontSize: 16,
+                                  fontSize: 14,
                                   fontFamily: 'Onest',
                                   fontWeight: FontWeight.w400,
                                   height: 1.50,
@@ -264,107 +290,174 @@ class _InboxScreenState extends State<InboxScreen> {
               ),
               // Messages List
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: isLoading
-                      ? Center(child: CircularProgressIndicator())
-                      : ListView.builder(
-                          padding: const EdgeInsets.only(top: 12),
-                          itemCount: messages.length,
-                          itemBuilder: (context, index) {
-                            final data = messages[index];
+                child: isLoading
+                    ? SkeletonLoader.fullScreenInboxSkeleton()
+                    : Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Builder(
+                          builder: (context) {
+                            // Filter messages based on current tab
+                            final filteredMessages = currentTab == 'Unread'
+                                ? messages.where((data) {
+                                    final hasUnread = data.lastMessage.senderId != userId && data.lastMessage.readAt == null;
+                                    return hasUnread;
+                                  }).toList()
+                                : messages;
+
+                            if (filteredMessages.isEmpty) {
+                              return Center(
+                                child: Text(
+                                  currentTab == 'Unread' ? 'No unread messages' : 'No messages yet',
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              );
+                            }
+
+                            return ListView.builder(
+                              padding: const EdgeInsets.only(top: 12),
+                              itemCount: filteredMessages.length,
+                              itemBuilder: (context, index) {
+                                final data = filteredMessages[index];
+                            // Calculate other person details once
+                            final bool isSender = data.sender.id == userId;
+                            final String otherPersonName = isSender ? data.receiver.name : data.sender.name;
+                            final String otherPersonImage = isSender ? data.receiver.image : data.sender.image;
+                            final int otherPersonId = isSender ? data.receiver.id : data.sender.id;
+                            
+                            // Check if there are unread messages (message from other user and not read yet)
+                            final bool hasUnreadMessages = data.lastMessage.senderId != userId && data.lastMessage.readAt == null;
+                            
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 12),
                               child: GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
+                                onTap: () async {
+                                  // Only mark as read if there are actually unread messages
+                                  if (hasUnreadMessages) {
+                                    final prov = Provider.of<AuthProvider>(context, listen: false);
+                                    await prov.markMessagesAsRead(
+                                      conversationId: data.id,
+                                      receiverId: userId,
+                                    );
+                                  }
+                                  
+                                  await Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) => ChatScreen(
-                                        name: data.sender!.name,
-                                        image: data.sender!.image,
+                                        name: otherPersonName,
+                                        image: otherPersonImage,
                                         conversationId: data.id,
+                                        receiverId: otherPersonId,
+                                        senderId: userId,
                                       ),
                                     ),
                                   );
+                                  // Refresh inbox after returning from chat to update read status
+                                  if (mounted) {
+                                    final prov = Provider.of<AuthProvider>(context, listen: false);
+                                    await prov.fetchInboxMessages(userId);
+                                  }
                                 },
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 16, vertical: 12),
                                   decoration: ShapeDecoration(
-                                    color: const Color(0xFFF9F9F9),
+                                    color: hasUnreadMessages ? const Color(0xFFFFF5F7) : const Color(0xFFF9F9F9),
                                     shape: RoundedRectangleBorder(
+                                      side: hasUnreadMessages ? BorderSide(width: 1, color: const Color(0xFFFF4678).withOpacity(0.2)) : BorderSide.none,
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
                                   child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       // Profile Image
                                       Container(
-                                        width: 70,
-                                        height: 70,
+                                        width: 56,
+                                        height: 56,
+                                        clipBehavior: Clip.antiAlias,
                                         decoration: ShapeDecoration(
                                           image: DecorationImage(
-                                            image: NetworkImage(data.receiver!.image),
+                                            image: _avatarProvider(otherPersonImage),
                                             fit: BoxFit.cover,
                                           ),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(35),
+                                            borderRadius: BorderRadius.circular(28),
                                           ),
                                         ),
                                       ),
                                       SizedBox(width: 16),
                                       // Message Content
                                       Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            // Name and Time Row
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.spaceBetween,
-                                              children: [
-                                                Expanded(
-                                                  child: Text(
-                                                    data.receiver!.name,
-                                                    style: TextStyle(
-                                                      color: const Color(0xFF0C141C),
-                                                      fontSize: 16,
-                                                      fontFamily: 'Onest',
-                                                      fontWeight: FontWeight.w500,
-                                                      height: 1.50,
+                                        child: Container(
+                                          height: 70,
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              // Name and Time Row
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.spaceBetween,
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      otherPersonName,
+                                                      style: TextStyle(
+                                                        color: const Color(0xFF171719),
+                                                        fontSize: 16,
+                                                        fontFamily: 'Onest',
+                                                        fontWeight: hasUnreadMessages ? FontWeight.w600 : FontWeight.w500,
+                                                        height: 1.25,
+                                                      ),
                                                     ),
                                                   ),
-                                                ),
-                                                Text(
-                                                  // Format time or use static value
-                                                  '9:15 AM',
-                                                  textAlign: TextAlign.right,
-                                                  style: TextStyle(
-                                                    color: const Color(0xFF4C7299),
-                                                    fontSize: 14,
-                                                    fontFamily: 'Onest',
-                                                    fontWeight: FontWeight.w400,
-                                                    height: 1.71,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            SizedBox(height: 8),
-                                            // Message Text
-                                            Text(
-                                              data.lastMessage!.message,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                color: Colors.black.withOpacity(0.50),
-                                                fontSize: 14,
-                                                fontFamily: 'Onest',
-                                                fontWeight: FontWeight.w300,
-                                                height: 1.43,
+                                                  // Unread badge
+                                                  if (hasUnreadMessages) ...[
+                                                    Container(
+                                                      width: 10,
+                                                      height: 10,
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(0xFFFF4678),
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                    ),
+                                                  ] else ...[
+                                                    // Time display
+                                                    Text(
+                                                      'Now', // Placeholder since API doesn't provide timestamp
+                                                      textAlign: TextAlign.right,
+                                                      style: TextStyle(
+                                                        color: const Color(0xFF4C7299),
+                                                        fontSize: 14,
+                                                        fontFamily: 'Onest',
+                                                        fontWeight: FontWeight.w400,
+                                                        height: 1.71,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
                                               ),
-                                            ),
-                                          ],
+                                              SizedBox(height: 8),
+                                              // Message Text
+                                              Text(
+                                                data.lastMessage.message,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  color: hasUnreadMessages ? Colors.black.withOpacity(0.70) : Colors.black.withOpacity(0.50),
+                                                  fontSize: 14,
+                                                  fontFamily: 'Onest',
+                                                  fontWeight: hasUnreadMessages ? FontWeight.w400 : FontWeight.w300,
+                                                  height: 1.43,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -373,7 +466,9 @@ class _InboxScreenState extends State<InboxScreen> {
                               ),
                             );
                           },
-                        ),
+                        );
+                      },
+                    ),
                 ),
               ),
             ],

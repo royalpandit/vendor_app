@@ -12,6 +12,7 @@ import 'package:vendor_app/features/authentication/data/models/resposne/subcateg
 import 'package:vendor_app/features/authentication/data/models/resposne/verify_otp_response.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_repository.dart';
 import 'package:vendor_app/features/booking/data/models/resposne/active_booking_model.dart';
+import 'package:vendor_app/features/chat/data/model/request/mark_messages_read_request.dart';
 import 'package:vendor_app/features/chat/data/model/resposen/conversation_chat_model.dart';
 import 'package:vendor_app/features/chat/data/model/resposen/inbox_response.dart';
 import 'package:vendor_app/features/home/data/models/request/update_booking_status_request.dart';
@@ -913,6 +914,27 @@ class AuthProvider extends ChangeNotifier {
       case ApiFailure():
         message = res.message;
         notifyListeners();
+        return false;
+    }
+  }
+
+  /// Mark messages as read
+  Future<bool> markMessagesAsRead({
+    required int conversationId,
+    required int receiverId,
+  }) async {
+    final req = MarkMessagesReadRequest(
+      conversationId: conversationId,
+      receiverId: receiverId,
+    );
+
+    final res = await _repo.markMessagesRead(req);
+
+    switch (res) {
+      case ApiSuccess<BaseResponse<Object?>>():
+        return true;
+
+      case ApiFailure():
         return false;
     }
   }

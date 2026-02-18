@@ -14,6 +14,7 @@ import 'package:vendor_app/features/authentication/data/models/resposne/subcateg
 import 'package:vendor_app/features/authentication/data/models/resposne/verify_otp_response.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_api.dart';
 import 'package:vendor_app/features/booking/data/models/resposne/active_booking_model.dart';
+import 'package:vendor_app/features/chat/data/model/request/mark_messages_read_request.dart';
 import 'package:vendor_app/features/chat/data/model/resposen/conversation_chat_model.dart';
 import 'package:vendor_app/features/chat/data/model/resposen/inbox_response.dart';
 import 'package:vendor_app/features/home/data/models/request/update_booking_status_request.dart';
@@ -456,6 +457,17 @@ class AuthRepository {
   Future<ApiResult<BaseResponse<Object?>>> sendMessage(SendMessageRequest req) async {
     try {
       final res = await api.sendMessage(req);
+      return ApiSuccess(res);
+    } on ApiException catch (e) {
+      return ApiFailure(e.message, statusCode: e.statusCode);
+    } catch (e) {
+      return ApiFailure(e.toString());
+    }
+  }
+
+  Future<ApiResult<BaseResponse<Object?>>> markMessagesRead(MarkMessagesReadRequest req) async {
+    try {
+      final res = await api.markMessagesRead(req);
       return ApiSuccess(res);
     } on ApiException catch (e) {
       return ApiFailure(e.message, statusCode: e.statusCode);

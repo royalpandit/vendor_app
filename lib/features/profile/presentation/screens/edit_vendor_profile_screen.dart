@@ -9,6 +9,7 @@ import 'package:vendor_app/features/authentication/data/models/resposne/category
 import 'package:vendor_app/features/authentication/data/models/resposne/subcategory_model_response.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/vendor_details_model.dart';
+import 'package:vendor_app/core/utils/app_message.dart';
 
 class EditVendorProfileScreen extends StatefulWidget {
   final VendorDetails vendorDetails;
@@ -161,7 +162,8 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
 
   void _showMsg(String msg) {
     if (!mounted || msg.isEmpty) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    // ignore: unawaited_futures
+    AppMessage.show(context, msg);
   }
 
   Future<void> _pickAndUpload({

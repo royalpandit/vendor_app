@@ -59,6 +59,7 @@ class ChatMessage {
   final String status; // e.g. "sent"
   final int isDeleted;
   final DateTime? readAt;
+  final DateTime? createdAt;
 
   ChatMessage({
     required this.id,
@@ -71,6 +72,7 @@ class ChatMessage {
     required this.status,
     required this.isDeleted,
     required this.readAt,
+    this.createdAt,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -85,6 +87,7 @@ class ChatMessage {
       status: json['status']?.toString() ?? '',
       isDeleted: (json['is_deleted'] ?? 0) as int,
       readAt: _parseNullableDateTime(json['read_at']),
+      createdAt: _parseNullableDateTime(json['created_at']),
     );
   }
 
@@ -100,6 +103,7 @@ class ChatMessage {
       'status': status,
       'is_deleted': isDeleted,
       'read_at': readAt?.toIso8601String(),
+      'created_at': createdAt?.toIso8601String(),
     };
   }
 
@@ -114,6 +118,7 @@ class ChatMessage {
     String? status,
     int? isDeleted,
     DateTime? readAt,
+    DateTime? createdAt,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -126,6 +131,7 @@ class ChatMessage {
       status: status ?? this.status,
       isDeleted: isDeleted ?? this.isDeleted,
       readAt: readAt ?? this.readAt,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 }

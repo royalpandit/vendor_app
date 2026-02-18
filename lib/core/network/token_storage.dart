@@ -1,9 +1,7 @@
 // lib/core/storage/token_storage.dart
  import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vendor_app/features/authentication/data/models/user_model.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:shared_preferences/shared_preferences.dart';
 
 class TokenStorage {
   static const _kToken = 'auth_token';
@@ -31,7 +29,7 @@ class TokenStorage {
       await prefs.setString(_kUserPhone, user.phone);
       await prefs.setStringList(_kUserRoles, user.roles);
     } catch (e) {
-      print("Error saving token and user data: $e");
+      // error saving token and user data
     }
   }
 
@@ -41,7 +39,7 @@ class TokenStorage {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getString(_kToken);
     } catch (e) {
-      print("Error fetching token: $e");
+      // error fetching token
       return null;
     }
   }
@@ -70,7 +68,7 @@ class TokenStorage {
       }
       return null;  // Return null if any of the required fields are missing
     } catch (e) {
-      print("Error fetching user data: $e");
+      // error fetching user data
       return null;
     }
   }
@@ -86,7 +84,7 @@ class TokenStorage {
       await prefs.remove(_kUserPhone);
       await prefs.remove(_kUserRoles);
     } catch (e) {
-      print("Error clearing data: $e");
+      // error clearing data
     }
   }
 }

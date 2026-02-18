@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:vendor_app/core/network/token_storage.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
+import 'package:vendor_app/core/utils/app_message.dart';
 
 
 class NewLeadsScreen extends StatefulWidget {
@@ -87,7 +88,7 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
                             'New Leads',
                             style: TextStyle(
                               color: Colors.black,
-                              fontSize: 24,
+                              fontSize: 20,
                               fontFamily: 'Onest',
                               fontWeight: FontWeight.w300,
                               height: 1.33,
@@ -139,7 +140,7 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
                                       hintText: 'Search for leads',
                                       hintStyle: TextStyle(
                                         color: const Color(0x4737383C),
-                                        fontSize: 16,
+                                        fontSize: 14,
                                         fontFamily: 'Onest',
                                         fontWeight: FontWeight.w400,
                                         height: 1.50,
@@ -267,9 +268,9 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
                         name,
                         style: TextStyle(
                           color: Colors.black,
-                          fontSize: 18,
+                          fontSize: 15,
                           fontFamily: 'Onest',
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w400,
                           height: 1.33,
                         ),
                       ),
@@ -281,7 +282,7 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
                         email,
                         style: TextStyle(
                           color: Colors.black.withOpacity(0.30),
-                          fontSize: 12,
+                          fontSize: 11,
                           fontFamily: 'Onest',
                           fontWeight: FontWeight.w400,
                           height: 1.17,
@@ -297,7 +298,7 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
                       'Budget',
                       style: TextStyle(
                         color: Colors.black.withOpacity(0.60),
-                        fontSize: 10,
+                        fontSize: 9,
                         fontFamily: 'Onest',
                         fontWeight: FontWeight.w400,
                         height: 1.80,
@@ -308,7 +309,7 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
                       budget,
                       style: TextStyle(
                         color: const Color(0xFF171719),
-                        fontSize: 16,
+                        fontSize: 14,
                         fontFamily: 'Onest',
                         fontWeight: FontWeight.w500,
                         height: 1.25,
@@ -325,45 +326,56 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Image.asset(
-                    'assets/icons/calendar.png',
-                    width: 18,
-                    height: 18,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    date,
-                    style: TextStyle(
-                      color: const Color(0xFF171719),
-                      fontSize: 12,
-                      fontFamily: 'Onest',
-                      fontWeight: FontWeight.w400,
-                      height: 1.50,
+              Flexible(
+                child: Row(
+                  children: [
+                    Image.asset(
+                      'assets/icons/calendar.png',
+                      width: 16,
+                      height: 16,
                     ),
-                  ),
-                ],
+                    SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        date,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: const Color(0xFF171719),
+                          fontSize: 11,
+                          fontFamily: 'Onest',
+                          fontWeight: FontWeight.w400,
+                          height: 1.50,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              Row(
-                children: [
-                  Image.asset(
-                    'assets/icons/location.png',
-                    width: 18,
-                    height: 18,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    location,
-                    style: TextStyle(
-                      color: const Color(0xFF171719),
-                      fontSize: 12,
-                      fontFamily: 'Onest',
-                      fontWeight: FontWeight.w400,
-                      height: 1.50,
+              SizedBox(width: 8),
+              Flexible(
+                child: Row(
+                  children: [
+                    Image.asset(
+                      'assets/icons/location.png',
+                      width: 16,
+                      height: 16,
                     ),
-                  ),
-                ],
+                    SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        location,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: const Color(0xFF171719),
+                          fontSize: 11,
+                          fontFamily: 'Onest',
+                          fontWeight: FontWeight.w400,
+                          height: 1.50,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -373,22 +385,26 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              _buildActionButton(
-                bookingId: bookingId,
-                label: 'Decline Order',
-                color: const Color(0xFFFF7171),
-                iconPath: 'assets/icons/close-circle.png',
-                action: "reject",
-                filled: false,
+              Expanded(
+                child: _buildActionButton(
+                  bookingId: bookingId,
+                  label: 'Decline Order',
+                  color: const Color(0xFFFF7171),
+                  iconPath: 'assets/icons/close-circle.png',
+                  action: "reject",
+                  filled: false,
+                ),
               ),
               SizedBox(width: 16),
-              _buildActionButton(
-                bookingId: bookingId,
-                label: 'Accept Order',
-                color: const Color(0xFF14A38B),
-                iconPath: 'assets/icons/tick-circle.png',
-                action: "approve",
-                filled: false,
+              Expanded(
+                child: _buildActionButton(
+                  bookingId: bookingId,
+                  label: 'Accept Order',
+                  color: const Color(0xFF14A38B),
+                  iconPath: 'assets/icons/tick-circle.png',
+                  action: "approve",
+                  filled: false,
+                ),
               ),
             ],
           ),
@@ -416,24 +432,21 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
         );
 
         if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(provider.message ?? 'Updated')),
-          );
+          // ignore: unawaited_futures
+          AppMessage.show(context, provider.message ?? 'Updated');
 
           // 🔄 Refresh Leads List
           final user = await TokenStorage.getUserData();
           final userId = user?.id ?? 0;
           provider.fetchBookingLeads(userId);
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(provider.message ?? 'Failed')),
-          );
+          // ignore: unawaited_futures
+          AppMessage.show(context, provider.message ?? 'Failed');
         }
       },
       child: Container(
-        width: 170,
         height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         clipBehavior: Clip.antiAlias,
         decoration: ShapeDecoration(
           color: filled ? color : Colors.transparent,
@@ -452,17 +465,19 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Image.asset(iconPath, width: 24, height: 24),
+            Image.asset(iconPath, width: 20, height: 20),
             SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 16,
-                fontFamily: 'Onest',
-                fontWeight: FontWeight.w500,
-                height: 1.50,
-                letterSpacing: 0.09,
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 13,
+                  fontFamily: 'Onest',
+                  fontWeight: FontWeight.w500,
+                  height: 1.2,
+                ),
               ),
             ),
           ],

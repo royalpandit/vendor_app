@@ -4,8 +4,14 @@ import 'package:provider/provider.dart';
 import 'package:vendor_app/core/network/token_storage.dart';
 import 'package:vendor_app/core/utils/app_colors.dart';
 import 'package:vendor_app/core/utils/app_icons.dart';
+import 'package:vendor_app/core/utils/app_theme.dart';
 import 'package:vendor_app/core/utils/custom_bottom_navigation.dart';
+import 'package:vendor_app/core/utils/responsive_util.dart';
+import 'package:vendor_app/core/utils/skeleton_loader.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
+import 'package:vendor_app/features/chat/presentation/screens/chat_screen.dart';
+import 'package:vendor_app/core/utils/app_message.dart';
+
 class BookingScreen extends StatefulWidget {
   final int currentIndex;
   BookingScreen({required this.currentIndex});
@@ -34,7 +40,7 @@ class _BookingScreenState extends State<BookingScreen> {
       authProvider.fetchActiveBookings(userId);  // Fetch active bookings
     } else {
       // Handle case where userId is not found or user is not logged in
-      print("User ID not found");
+      // silently ignore
     }
   }
 
@@ -68,9 +74,9 @@ class _BookingScreenState extends State<BookingScreen> {
                             'Welcome Back, ${authProvider.vendorDetails?.name ?? 'Vendor'}',
                             style: TextStyle(
                               color: const Color(0xFF171719),
-                              fontSize: 32,
+                              fontSize: 26,
                               fontFamily: 'Onest',
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                               height: 1.13,
                             ),
                           );
@@ -83,7 +89,7 @@ class _BookingScreenState extends State<BookingScreen> {
                             '${authProvider.dashboardData?.totalLeads ?? 0} new leads are waiting for you! 🔥',
                             style: TextStyle(
                               color: const Color(0xFF5C5C5C),
-                              fontSize: 16,
+                              fontSize: 14,
                               fontFamily: 'Onest',
                               fontWeight: FontWeight.w400,
                             ),
@@ -125,7 +131,7 @@ class _BookingScreenState extends State<BookingScreen> {
                                         hintText: 'Search for bookings',
                                         hintStyle: TextStyle(
                                           color: const Color(0x4737383C),
-                                          fontSize: 16,
+                                          fontSize: 14,
                                           fontFamily: 'Onest',
                                           fontWeight: FontWeight.w400,
                                           height: 1.50,
@@ -136,7 +142,7 @@ class _BookingScreenState extends State<BookingScreen> {
                                         contentPadding: EdgeInsets.zero,
                                       ),
                                       style: TextStyle(
-                                        fontSize: 16,
+                                        fontSize: 14,
                                         fontFamily: 'Onest',
                                         fontWeight: FontWeight.w400,
                                       ),
@@ -151,9 +157,9 @@ class _BookingScreenState extends State<BookingScreen> {
                           GestureDetector(
                             onTap: () => _showFilterBottomSheet(context),
                             child: Container(
-                              width: 60,
-                              height: 60,
-                              padding: const EdgeInsets.all(10),
+                              width: 44,
+                              height: 44,
+                              padding: const EdgeInsets.all(8),
                               decoration: ShapeDecoration(
                                 color: Colors.white,
                                 shape: RoundedRectangleBorder(
@@ -163,8 +169,8 @@ class _BookingScreenState extends State<BookingScreen> {
                               child: Center(
                                 child: Image.asset(
                                   'assets/icons/setting-4.png',
-                                  width: 20,
-                                  height: 20,
+                                  width: 18,
+                                  height: 18,
                                 ),
                               ),
                             ),
@@ -182,12 +188,19 @@ class _BookingScreenState extends State<BookingScreen> {
                     child: Consumer<AuthProvider>(
                       builder: (context, authProvider, child) {
                         if (authProvider.loading) {
-                          return Center(child: CircularProgressIndicator());
+                          return SkeletonLoader.fullScreenBookingSkeleton();
                         }
 
                         if (authProvider.activeBookingsModels == null ||
                             authProvider.activeBookingsModels!.isEmpty) {
-                          return Center(child: Text('No active bookings available.'));
+                          return Center(
+                            child: Text(
+                              'No active bookings available.',
+                              style: AppTheme.bodyRegular.copyWith(
+                                color: AppTheme.gray,
+                              ),
+                            ),
+                          );
                         }
 
                         return ListView.builder(
@@ -205,6 +218,9 @@ class _BookingScreenState extends State<BookingScreen> {
                                 date: booking.eventDate,
                                 location: booking.address,
                                 status: booking.status,
+                                userId: booking.user.id,
+                                userImage: booking.user.image,
+                                vendorId: booking.vendorId,
                               ),
                             );
                           },
@@ -247,7 +263,11 @@ class _BookingScreenState extends State<BookingScreen> {
       case 'Pending':
         return const Color(0xFFFF7171);
       case 'Completed':
-        return const Color(0xFF7188FF);
+      case 'completed':
+        return const Color(0xFFFFAC57); // Yellow color
+      case 'cancelled':
+      case 'reject':
+        return const Color(0xFFFF7171); // Red color
       default:
         return Colors.grey;
     }
@@ -263,6 +283,9 @@ class _BookingScreenState extends State<BookingScreen> {
     required String date,
     required String location,
     required String status,
+    required int userId,
+    required String userImage,
+    required int vendorId,
   }) {
     return GestureDetector(
       onTap: () {
@@ -275,6 +298,9 @@ class _BookingScreenState extends State<BookingScreen> {
           date,
           location,
           status,
+          userId,
+          userImage,
+          vendorId,
         );
       },
       child: Container(
@@ -300,7 +326,7 @@ class _BookingScreenState extends State<BookingScreen> {
                 '#BK-$bookingId',
                 style: TextStyle(
                   color: Colors.black,
-                  fontSize: 16,
+                  fontSize: 13,
                   fontFamily: 'Onest',
                   fontWeight: FontWeight.w400,
                   height: 1.50,
@@ -320,7 +346,7 @@ class _BookingScreenState extends State<BookingScreen> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 10,
+                    fontSize: 9,
                     fontFamily: 'Onest',
                     fontWeight: FontWeight.w400,
                     height: 1.20,
@@ -351,9 +377,9 @@ class _BookingScreenState extends State<BookingScreen> {
                         clientName,
                         style: TextStyle(
                           color: Colors.black,
-                          fontSize: 18,
+                          fontSize: 15,
                           fontFamily: 'Onest',
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w400,
                           height: 1.33,
                         ),
                       ),
@@ -362,9 +388,9 @@ class _BookingScreenState extends State<BookingScreen> {
                         service,
                         style: TextStyle(
                           color: Colors.black.withOpacity(0.70),
-                          fontSize: 12,
+                          fontSize: 11,
                           fontFamily: 'Onest',
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w400,
                           height: 1.17,
                         ),
                       ),
@@ -378,7 +404,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       'Budget',
                       style: TextStyle(
                         color: Colors.black.withOpacity(0.60),
-                        fontSize: 10,
+                        fontSize: 9,
                         fontFamily: 'Onest',
                         fontWeight: FontWeight.w400,
                         height: 1.80,
@@ -389,9 +415,9 @@ class _BookingScreenState extends State<BookingScreen> {
                       '₹$budget',
                       style: TextStyle(
                         color: const Color(0xFF171719),
-                        fontSize: 16,
+                        fontSize: 14,
                         fontFamily: 'Onest',
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                         height: 1.25,
                       ),
                     ),
@@ -405,45 +431,56 @@ class _BookingScreenState extends State<BookingScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Image.asset(
-                    'assets/icons/calendar.png',
-                    width: 18,
-                    height: 18,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    date,
-                    style: TextStyle(
-                      color: const Color(0xFF171719),
-                      fontSize: 12,
-                      fontFamily: 'Onest',
-                      fontWeight: FontWeight.w400,
-                      height: 1.50,
+              Flexible(
+                child: Row(
+                  children: [
+                    Image.asset(
+                      'assets/icons/calendar.png',
+                      width: 16,
+                      height: 16,
                     ),
-                  ),
-                ],
+                    SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        date,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: const Color(0xFF171719),
+                          fontSize: 11,
+                          fontFamily: 'Onest',
+                          fontWeight: FontWeight.w400,
+                          height: 1.50,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              Row(
-                children: [
-                  Image.asset(
-                    'assets/icons/location.png',
-                    width: 18,
-                    height: 18,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    location,
-                    style: TextStyle(
-                      color: const Color(0xFF171719),
-                      fontSize: 12,
-                      fontFamily: 'Onest',
-                      fontWeight: FontWeight.w400,
-                      height: 1.50,
+              SizedBox(width: 8),
+              Flexible(
+                child: Row(
+                  children: [
+                    Image.asset(
+                      'assets/icons/location.png',
+                      width: 16,
+                      height: 16,
                     ),
-                  ),
-                ],
+                    SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        location,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: const Color(0xFF171719),
+                          fontSize: 11,
+                          fontFamily: 'Onest',
+                          fontWeight: FontWeight.w400,
+                          height: 1.50,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -453,8 +490,69 @@ class _BookingScreenState extends State<BookingScreen> {
             children: [
               // Message Button
               GestureDetector(
-                onTap: () {
-                  // Handle message action
+                onTap: () async {
+                  // Navigate to chat with this user. Ensure we don't use a deactivated context.
+                  final userData = await TokenStorage.getUserData();
+                  final vendorId = userData?.id ?? 0;
+
+                  if (vendorId == 0) return;
+
+                  final authProvider = context.read<AuthProvider>();
+
+                  // Fetch current inbox to check for an existing conversation
+                  await authProvider.fetchInboxMessages(vendorId);
+
+                  int conversationId = 0;
+                  final inboxMessages = authProvider.inboxMessages;
+                  for (var conversation in inboxMessages) {
+                    final isSender = conversation.sender.id == vendorId;
+                    final otherPersonId = isSender ? conversation.receiver.id : conversation.sender.id;
+                    if (otherPersonId == userId) {
+                      conversationId = conversation.id;
+                      break;
+                    }
+                  }
+
+                  // If no conversation exists, create one by sending a short initial message.
+                  // This lets the server create the conversation entry and assign an id.
+                  if (conversationId == 0) {
+                    final created = await authProvider.sendMessage(
+                      senderId: vendorId,
+                      receiverId: userId,
+                      messageText: 'Hi',
+                    );
+
+                    if (!created) {
+                      if (mounted) AppMessage.show(context, authProvider.message ?? 'Could not create conversation');
+                      return;
+                    }
+
+                    // Re-fetch inbox and look for the new conversation id
+                    await authProvider.fetchInboxMessages(vendorId);
+                    for (var conversation in authProvider.inboxMessages) {
+                      final isSender = conversation.sender.id == vendorId;
+                      final otherPersonId = isSender ? conversation.receiver.id : conversation.sender.id;
+                      if (otherPersonId == userId) {
+                        conversationId = conversation.id;
+                        break;
+                      }
+                    }
+                  }
+
+                  // Navigate only if widget still mounted
+                  if (!mounted) return;
+
+                  Navigator.of(context, rootNavigator: true).push(
+                    MaterialPageRoute(
+                      builder: (context) => ChatScreen(
+                        name: clientName,
+                        image: userImage,
+                        conversationId: conversationId,
+                        receiverId: userId,
+                        senderId: vendorId,
+                      ),
+                    ),
+                  );
                 },
                 child: Container(
                   width: 60,
@@ -476,26 +574,27 @@ class _BookingScreenState extends State<BookingScreen> {
                 ),
               ),
               SizedBox(width: 16),
-              // Action Button
-              Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    if (status == "In Progress" || status == "confirmed") {
-                      _showCompleteBottomSheet(
-                        context,
-                        bookingId,
-                        clientName,
-                        service,
-                        budget,
-                        date,
-                        location,
-                        status,
-                      );
-                    }
-                  },
+              // Action Button - Only show if not completed or cancelled
+              if (status.toLowerCase() != 'completed' && status.toLowerCase() != 'cancelled' && status.toLowerCase() != 'reject')
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      if (status == "In Progress" || status == "confirmed") {
+                        _showCompleteBottomSheet(
+                          context,
+                          bookingId,
+                          clientName,
+                          service,
+                          budget,
+                          date,
+                          location,
+                          status,
+                        );
+                      }
+                    },
                   child: Container(
                     height: 40,
-                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: ShapeDecoration(
                       color: const Color(0xFF14A38B),
                       shape: RoundedRectangleBorder(
@@ -505,7 +604,7 @@ class _BookingScreenState extends State<BookingScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        if (status == "In Progress" || status == "confirmed") ...[  
+                        if (status == "In Progress" || status == "confirmed") ...[
                           ColorFiltered(
                             colorFilter: ColorFilter.mode(
                               Colors.white,
@@ -513,21 +612,23 @@ class _BookingScreenState extends State<BookingScreen> {
                             ),
                             child: Image.asset(
                               'assets/icons/tick-circle.png',
-                              width: 24,
-                              height: 24,
+                              width: 20,
+                              height: 20,
                             ),
                           ),
                           SizedBox(width: 6),
                         ],
-                        Text(
-                          _getButtonText(status),
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontFamily: 'Onest',
-                            fontWeight: FontWeight.w500,
-                            height: 1.50,
-                            letterSpacing: 0.09,
+                        Flexible(
+                          child: Text(
+                            _getButtonText(status),
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontFamily: 'Onest',
+                              fontWeight: FontWeight.w500,
+                              height: 1.2,
+                            ),
                           ),
                         ),
                       ],
@@ -552,6 +653,9 @@ class _BookingScreenState extends State<BookingScreen> {
     String date,
     String location,
     String status,
+    int userId,
+    String userImage,
+    int vendorId,
   ) {
     showModalBottomSheet(
       context: context,
@@ -608,156 +712,25 @@ class _BookingScreenState extends State<BookingScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Progress Steps
+                    // Progress Steps (dynamic based on status)
                     Row(
                       children: [
-                        Expanded(
-                          child: Column(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(3),
-                                decoration: ShapeDecoration(
-                                  color: const Color(0xFFFEF1F2),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(100),
-                                  ),
-                                ),
-                                child: Icon(
-                                  Icons.check,
-                                  size: 12,
-                                  color: Colors.pink,
-                                ),
-                              ),
-                              SizedBox(height: 5),
-                              Text(
-                                'Start',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: const Color(0xFF1D2129),
-                                  fontSize: 14,
-                                  fontFamily: 'Onest',
-                                  fontWeight: FontWeight.w400,
-                                  height: 1.40,
-                                ),
-                              ),
-                              Text(
-                                'Date',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: const Color(0xFF4E5969),
-                                  fontSize: 12,
-                                  fontFamily: 'Onest',
-                                  fontWeight: FontWeight.w400,
-                                  height: 1.40,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: Column(
-                            children: [
-                              Container(
-                                width: 18,
-                                height: 18,
-                                decoration: ShapeDecoration(
-                                  color: const Color(0xFFFF4678),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(100),
-                                  ),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    '2',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontFamily: 'Onest',
-                                      fontWeight: FontWeight.w500,
-                                      height: 1.50,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(height: 5),
-                              Text(
-                                'In progress',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: const Color(0xFFFF4678),
-                                  fontSize: 14,
-                                  fontFamily: 'Onest',
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.40,
-                                ),
-                              ),
-                              Text(
-                                'Date',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: const Color(0xFF4E5969),
-                                  fontSize: 12,
-                                  fontFamily: 'Onest',
-                                  fontWeight: FontWeight.w400,
-                                  height: 1.40,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: Column(
-                            children: [
-                              Container(
-                                width: 18,
-                                height: 18,
-                                decoration: ShapeDecoration(
-                                  color: const Color(0xFFF2F3F5),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(100),
-                                  ),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    '3',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: const Color(0xFF86909C),
-                                      fontSize: 12,
-                                      fontFamily: 'Onest',
-                                      fontWeight: FontWeight.w500,
-                                      height: 1.50,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(height: 5),
-                              Text(
-                                'Step 3',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: const Color(0xFF86909C),
-                                  fontSize: 14,
-                                  fontFamily: 'Onest',
-                                  fontWeight: FontWeight.w400,
-                                  height: 1.40,
-                                ),
-                              ),
-                              Text(
-                                'Date',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: const Color(0xFF4E5969),
-                                  fontSize: 12,
-                                  fontFamily: 'Onest',
-                                  fontWeight: FontWeight.w400,
-                                  height: 1.40,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        (() {
+                          final s = status.toLowerCase();
+                          final startDone = s != 'pending';
+                          return Expanded(child: _stepItem('Start', startDone));
+                        })(),
+                        (() {
+                          final s = status.toLowerCase();
+                          final step3Done = s == 'completed' || s == 'cancelled' || s == 'reject' || s == 'rejected';
+                          final inProgressActive = s == 'in progress' || s == 'confirmed' || s == 'in_progress' || s == 'accepted' || step3Done;
+                          return Expanded(child: _stepItem('In progress', inProgressActive));
+                        })(),
+                        (() {
+                          final s = status.toLowerCase();
+                          final step3Done = s == 'completed' || s == 'cancelled' || s == 'reject' || s == 'rejected';
+                          return Expanded(child: _stepItem('Step 3', step3Done));
+                        })(),
                       ],
                     ),
                     SizedBox(height: 24),
@@ -871,45 +844,56 @@ class _BookingScreenState extends State<BookingScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                children: [
-                                  Image.asset(
-                                    'assets/icons/calendar.png',
-                                    width: 18,
-                                    height: 18,
-                                  ),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    date,
-                                    style: TextStyle(
-                                      color: const Color(0xFF171719),
-                                      fontSize: 12,
-                                      fontFamily: 'Onest',
-                                      fontWeight: FontWeight.w400,
-                                      height: 1.50,
+                              Flexible(
+                                child: Row(
+                                  children: [
+                                    Image.asset(
+                                      'assets/icons/calendar.png',
+                                      width: 18,
+                                      height: 18,
                                     ),
-                                  ),
-                                ],
+                                    SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        date,
+                                        style: TextStyle(
+                                          color: const Color(0xFF171719),
+                                          fontSize: 12,
+                                          fontFamily: 'Onest',
+                                          fontWeight: FontWeight.w400,
+                                          height: 1.50,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              Row(
-                                children: [
-                                  Image.asset(
-                                    'assets/icons/location.png',
-                                    width: 18,
-                                    height: 18,
-                                  ),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    location,
-                                    style: TextStyle(
-                                      color: const Color(0xFF171719),
-                                      fontSize: 12,
-                                      fontFamily: 'Onest',
-                                      fontWeight: FontWeight.w400,
-                                      height: 1.50,
+                              SizedBox(width: 8),
+                              Flexible(
+                                child: Row(
+                                  children: [
+                                    Image.asset(
+                                      'assets/icons/location.png',
+                                      width: 18,
+                                      height: 18,
                                     ),
-                                  ),
-                                ],
+                                    SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        location,
+                                        style: TextStyle(
+                                          color: const Color(0xFF171719),
+                                          fontSize: 12,
+                                          fontFamily: 'Onest',
+                                          fontWeight: FontWeight.w400,
+                                          height: 1.50,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -917,86 +901,142 @@ class _BookingScreenState extends State<BookingScreen> {
                       ),
                     ),
                     SizedBox(height: 80),
-                    // Action Buttons
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-                        decoration: ShapeDecoration(
-                          shape: RoundedRectangleBorder(
-                            side: BorderSide(
-                              width: 1,
-                              color: const Color(0xFFFF7171),
+                    // Action Buttons - only show top Cancel button when booking is not finished
+                    if (status.toLowerCase() != 'completed' && status.toLowerCase() != 'cancelled' && status.toLowerCase() != 'reject') ...[
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                          decoration: ShapeDecoration(
+                            shape: RoundedRectangleBorder(
+                              side: BorderSide(
+                                width: 1,
+                                color: const Color(0xFFFF7171),
+                              ),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            borderRadius: BorderRadius.circular(12),
                           ),
-                        ),
-                        child: Text(
-                          'Close',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: const Color(0xFFFF7171),
-                            fontSize: 16,
-                            fontFamily: 'Onest',
-                            fontWeight: FontWeight.w500,
-                            height: 1.50,
-                            letterSpacing: 0.09,
+                          child: Text(
+                            'Cancel',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: const Color(0xFFFF7171),
+                              fontSize: 16,
+                              fontFamily: 'Onest',
+                              fontWeight: FontWeight.w500,
+                              height: 1.50,
+                              letterSpacing: 0.09,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    SizedBox(height: 16),
-                    Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () {
-                            // Handle message action
-                          },
-                          child: Container(
-                            width: 48,
-                            height: 48,
-                            padding: const EdgeInsets.all(10),
-                            decoration: ShapeDecoration(
-                              color: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(1000),
+                      SizedBox(height: 16),
+                    ],
+                    // Only show buttons if status is not completed or cancelled
+                    if (status.toLowerCase() != 'completed' && status.toLowerCase() != 'cancelled' && status.toLowerCase() != 'reject') ...[
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () async {
+                              // Navigate to chat screen; create conversation if missing
+                              final userData = await TokenStorage.getUserData();
+                              final currentVendorId = userData?.id ?? 0;
+                              if (currentVendorId == 0) return;
+
+                              final authProvider = context.read<AuthProvider>();
+                              await authProvider.fetchInboxMessages(currentVendorId);
+
+                              int conversationId = 0;
+                              for (var conversation in authProvider.inboxMessages) {
+                                final isSender = conversation.sender.id == currentVendorId;
+                                final otherPersonId = isSender ? conversation.receiver.id : conversation.sender.id;
+                                if (otherPersonId == userId) {
+                                  conversationId = conversation.id;
+                                  break;
+                                }
+                              }
+
+                              if (conversationId == 0) {
+                                final created = await authProvider.sendMessage(
+                                  senderId: currentVendorId,
+                                  receiverId: userId,
+                                  messageText: 'Hi',
+                                );
+
+                                if (!created) {
+                                  if (mounted) AppMessage.show(context, authProvider.message ?? 'Could not create conversation');
+                                  return;
+                                }
+
+                                await authProvider.fetchInboxMessages(currentVendorId);
+                                for (var conversation in authProvider.inboxMessages) {
+                                  final isSender = conversation.sender.id == currentVendorId;
+                                  final otherPersonId = isSender ? conversation.receiver.id : conversation.sender.id;
+                                  if (otherPersonId == userId) {
+                                    conversationId = conversation.id;
+                                    break;
+                                  }
+                                }
+                              }
+
+                              if (!mounted) return;
+
+                              Navigator.of(context, rootNavigator: true).push(
+                                MaterialPageRoute(
+                                  builder: (context) => ChatScreen(
+                                    name: clientName,
+                                    image: userImage,
+                                    conversationId: conversationId,
+                                    receiverId: userId,
+                                    senderId: currentVendorId,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: 48,
+                              height: 48,
+                              padding: const EdgeInsets.all(10),
+                              decoration: ShapeDecoration(
+                                color: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(1000),
+                                ),
                               ),
-                            ),
-                            child: Center(
-                              child: Image.asset(
-                                'assets/icons/message-text.png',
-                                width: 20,
-                                height: 20,
+                              child: Center(
+                                child: Image.asset(
+                                  'assets/icons/message-text.png',
+                                  width: 20,
+                                  height: 20,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        SizedBox(width: 16),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () async {
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () async {
                               final provider = context.read<AuthProvider>();
                               Navigator.pop(context);
 
                               final result = await provider.updateBookingStatus(
                                 bookingId: bookingId,
-                                action: "confirmed",
+                                action: "completed",
                               );
 
                               if (result) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text("Booking marked as completed")),
-                                );
+                                // ignore: unawaited_futures
+                                AppMessage.show(context, "Booking marked as completed");
 
+                                // Refresh bookings
                                 final user = await TokenStorage.getUserData();
                                 if (user?.id != null) {
                                   provider.fetchActiveBookings(user!.id!);
                                 }
                               } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(provider.message ?? "Failed")),
-                                );
+                                // ignore: unawaited_futures
+                                AppMessage.show(context, provider.message ?? "Failed");
                               }
                             },
                             child: Container(
@@ -1041,6 +1081,31 @@ class _BookingScreenState extends State<BookingScreen> {
                         ),
                       ],
                     ),
+                  ] else ...[
+                    // Show message when booking is already completed
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.check_circle, color: Colors.green, size: 24),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              "This booking is already completed",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   ],
                 ),
               ),
@@ -1343,13 +1408,26 @@ class _BookingScreenState extends State<BookingScreen> {
                 ),
               ),
 
-              /// Step Progress
+              /// Step Progress (dynamic)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _stepItem("Start", true),
-                  _stepItem("In progress", true),
-                  _stepItem("Step 3", false),
+                  (() {
+                    final s = status.toLowerCase();
+                    final startDone = s != 'pending';
+                    return _stepItem('Start', startDone);
+                  })(),
+                  (() {
+                    final s = status.toLowerCase();
+                    final step3Done = s == 'completed' || s == 'cancelled' || s == 'reject' || s == 'rejected';
+                    final inProgressActive = s == 'in progress' || s == 'confirmed' || s == 'in_progress' || s == 'accepted' || step3Done;
+                    return _stepItem('In progress', inProgressActive);
+                  })(),
+                  (() {
+                    final s = status.toLowerCase();
+                    final step3Done = s == 'completed' || s == 'cancelled' || s == 'reject' || s == 'rejected';
+                    return _stepItem('Step 3', step3Done);
+                  })(),
                 ],
               ),
 
@@ -1419,27 +1497,44 @@ class _BookingScreenState extends State<BookingScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Image.asset(
-                              'assets/icons/calendar.png',
-                              width: 16,
-                              height: 16,
-                            ),
-                            const SizedBox(width: 5),
-                            Text(date, style: const TextStyle(color: Colors.grey)),
-                          ],
+                        Flexible(
+                          child: Row(
+                            children: [
+                              Image.asset(
+                                'assets/icons/calendar.png',
+                                width: 16,
+                                height: 16,
+                              ),
+                              const SizedBox(width: 5),
+                              Flexible(
+                                child: Text(
+                                  date,
+                                  style: const TextStyle(color: Colors.grey),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        Row(
-                          children: [
-                            Image.asset(
-                              'assets/icons/location.png',
-                              width: 16,
-                              height: 16,
-                            ),
-                            const SizedBox(width: 5),
-                            Text(location, style: const TextStyle(color: Colors.grey)),
-                          ],
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Row(
+                            children: [
+                              Image.asset(
+                                'assets/icons/location.png',
+                                width: 16,
+                                height: 16,
+                              ),
+                              const SizedBox(width: 5),
+                              Flexible(
+                                child: Text(
+                                  location,
+                                  style: const TextStyle(color: Colors.grey),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -1469,24 +1564,10 @@ class _BookingScreenState extends State<BookingScreen> {
 
               const SizedBox(height: 20),
 
-              /// Close Button
-              OutlinedButton(
-                onPressed: () => Navigator.pop(context),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red,
-                  side: const BorderSide(color: Colors.red),
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text("Close"),
-              ),
-
-              const SizedBox(height: 15),
-
-              /// Final Complete Button
-              ElevatedButton(
+              // Only show action buttons if status is not completed or cancelled
+              if (status.toLowerCase() != 'completed' && status.toLowerCase() != 'cancelled' && status.toLowerCase() != 'reject') ...[ 
+                /// Cancel Button
+                OutlinedButton(
                   onPressed: () async {
                     final provider = context.read<AuthProvider>();
 
@@ -1494,13 +1575,12 @@ class _BookingScreenState extends State<BookingScreen> {
 
                     final result = await provider.updateBookingStatus(
                       bookingId: bookingId,
-                      action: "confirmed",   // confirm karna hai
+                      action: "reject",
                     );
 
                     if (result) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Booking marked as completed")),
-                      );
+                      // ignore: unawaited_futures
+                      AppMessage.show(context, "Booking cancelled");
 
                       // Refresh bookings
                       final user = await TokenStorage.getUserData();
@@ -1508,9 +1588,47 @@ class _BookingScreenState extends State<BookingScreen> {
                         provider.fetchActiveBookings(user!.id!);
                       }
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(provider.message ?? "Failed")),
-                      );
+                      // ignore: unawaited_futures
+                      AppMessage.show(context, provider.message ?? "Failed");
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red),
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text("Cancel"),
+                ),
+
+                const SizedBox(height: 15),
+
+                /// Final Complete Button
+                ElevatedButton(
+                  onPressed: () async {
+                    final provider = context.read<AuthProvider>();
+
+                    Navigator.pop(context);
+
+                    final result = await provider.updateBookingStatus(
+                      bookingId: bookingId,
+                      action: "completed",
+                    );
+
+                    if (result) {
+                      // ignore: unawaited_futures
+                      AppMessage.show(context, "Booking marked as completed");
+
+                      // Refresh bookings
+                      final user = await TokenStorage.getUserData();
+                      if (user?.id != null) {
+                        provider.fetchActiveBookings(user!.id!);
+                      }
+                    } else {
+                      // ignore: unawaited_futures
+                      AppMessage.show(context, provider.message ?? "Failed");
                     }
                   },
 
@@ -1547,6 +1665,31 @@ class _BookingScreenState extends State<BookingScreen> {
                   ],
                 ),
               ),
+              ] else ...[
+                // Show message when booking is already completed
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.green, size: 24),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          "This booking is already completed",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
 
               const SizedBox(height: 20),
             ],

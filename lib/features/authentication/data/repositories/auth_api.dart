@@ -14,6 +14,7 @@ import 'package:vendor_app/features/authentication/data/models/resposne/subcateg
 import 'package:vendor_app/features/authentication/data/models/resposne/verify_otp_response.dart';
 import 'package:path/path.dart' as p;
 import 'package:vendor_app/features/booking/data/models/resposne/active_booking_model.dart';
+import 'package:vendor_app/features/chat/data/model/request/mark_messages_read_request.dart';
 import 'package:vendor_app/features/chat/data/model/resposen/conversation_chat_model.dart';
 import 'package:vendor_app/features/chat/data/model/resposen/inbox_response.dart';
 import 'package:vendor_app/features/home/data/models/request/update_booking_status_request.dart';
@@ -297,9 +298,16 @@ class AuthApi {
     final decoded = res.data; // full map: {status, code, message, data: [...]}
     return BaseResponse.fromJson(decoded, (json) {
       final list = (json as List);
-      return list
-          .map((e) => ConversationItem.fromJson(e as Map<String, dynamic>))
-          .toList();
+      return list.map((e) {
+        final msg = e as Map<String, dynamic>;
+        // Convert plain message object to ConversationItem structure
+        return ConversationItem(
+          id: conversationId,
+          lastMessage: ChatMessage.fromJson(msg),
+          sender: ChatUser.fromJson(msg['sender'] as Map<String, dynamic>),
+          receiver: ChatUser.fromJson(msg['receiver'] as Map<String, dynamic>),
+        );
+      }).toList();
     });
   }
 
@@ -496,6 +504,17 @@ class AuthApi {
   Future<BaseResponse<Object?>> sendMessage(SendMessageRequest req) async {
     final res = await _dio.post(
       Endpoints.sendMessage,
+      data: req.toJson(),
+    );
+    final decoded = res.data;
+
+    return BaseResponse.fromJson(decoded, (json) => json);
+  }
+
+  /// POST /api/messages/read
+  Future<BaseResponse<Object?>> markMessagesRead(MarkMessagesReadRequest req) async {
+    final res = await _dio.post(
+      Endpoints.markMessagesRead,
       data: req.toJson(),
     );
     final decoded = res.data;

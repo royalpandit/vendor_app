@@ -9,8 +9,10 @@ import 'package:vendor_app/core/network/token_storage.dart';
 import 'package:vendor_app/core/services/address_service.dart';
 import 'package:vendor_app/core/services/lat_lng_service.dart';
 import 'package:vendor_app/core/utils/app_icons.dart';
+import 'package:vendor_app/core/utils/app_theme.dart';
 import 'package:vendor_app/features/authentication/data/models/resposne/category_model_response.dart';
 import 'package:vendor_app/features/authentication/data/models/resposne/subcategory_model_response.dart';
+import 'package:vendor_app/core/utils/app_message.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
 import 'package:vendor_app/features/profile/data/models/request/service_add_request.dart';
 import 'package:vendor_app/features/profile/data/models/request/venue_create_request.dart';
@@ -54,6 +56,7 @@ class _ManageServiceDetailsScreenState
   final addressController = TextEditingController();
   final cityController = TextEditingController();
   final stateController = TextEditingController();
+  final pincodeController = TextEditingController();
   final amenitiesController = TextEditingController();
   final latitudeController = TextEditingController();
   final longitudeController = TextEditingController();
@@ -114,10 +117,12 @@ class _ManageServiceDetailsScreenState
           if (parts != null) {
             final city = (parts.locality ?? '').trim();
             final state = (parts.administrativeArea ?? '').trim();
+            final pincode = (parts.postalCode ?? '').trim();
             final fmt = parts.formatted.trim();
 
             if (city.isNotEmpty) cityController.text = city;
             if (state.isNotEmpty) stateController.text = state;
+            if (pincode.isNotEmpty) pincodeController.text = pincode;
 
             final prov = context.read<AuthProvider>();
             if (state.isNotEmpty && prov.states.isNotEmpty) {
@@ -141,11 +146,11 @@ class _ManageServiceDetailsScreenState
             }
           }
         } catch (e) {
-          debugPrint('⚠️ Reverse geocoding error: $e');
+          // reverse geocoding error
         }
       }
     } catch (e) {
-      debugPrint('⚠️ Prefill error: $e');
+      // prefill error
     }
   }
 
@@ -219,6 +224,17 @@ class _ManageServiceDetailsScreenState
           _showMsg('Please select a subcategory');
           return;
         }
+        
+        // Validate city and pincode
+        if (cityController.text.trim().isEmpty) {
+          _showMsg('Please enter city');
+          return;
+        }
+        
+        if (pincodeController.text.trim().isEmpty) {
+          _showMsg('Please enter pincode');
+          return;
+        }
 
         final amenities = _selectedAmenities
             .map((a) => VenueAmenityReq(amenityId: a.id, value: a.name))
@@ -240,7 +256,7 @@ class _ManageServiceDetailsScreenState
           address: addressController.text.trim(),
           city: cityController.text.trim(),
           state: stateController.text.trim(),
-          pincode: '',
+          pincode: pincodeController.text.trim(),
           latitude: latitudeController.text.trim(),
           longitude: longitudeController.text.trim(),
           details: details,
@@ -290,8 +306,8 @@ class _ManageServiceDetailsScreenState
 
   void _showMsg(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    // ignore: unawaited_futures
+    AppMessage.show(context, message);
   }
 
   @override
@@ -306,6 +322,7 @@ class _ManageServiceDetailsScreenState
     addressController.dispose();
     cityController.dispose();
     stateController.dispose();
+    pincodeController.dispose();
     amenitiesController.dispose();
     latitudeController.dispose();
     longitudeController.dispose();
@@ -443,9 +460,32 @@ class _ManageServiceDetailsScreenState
                         addressController,
                       ),
                       const SizedBox(height: 16),
-                      // City & State
+                      // State & City
                       Row(
                         children: [
+                          Expanded(
+                            child: _buildDropdownField(
+                              'State',
+                              _selState?.name ?? (stateController.text.isEmpty
+                                  ? 'State'
+                                  : stateController.text),
+                              onTap: () async {
+                                final picked = await _showStatePicker(context);
+                                if (picked != null) {
+                                  setState(() {
+                                    _selState = picked;
+                                    stateController.text = picked.name;
+                                    _selCity = null;
+                                    cityController.clear();
+                                  });
+                                  await context
+                                      .read<AuthProvider>()
+                                      .loadCities(picked.id);
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 16),
                           Expanded(
                             child: _buildDropdownField(
                               'City',
@@ -469,30 +509,15 @@ class _ManageServiceDetailsScreenState
                               },
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _buildDropdownField(
-                              'State',
-                              _selState?.name ?? (stateController.text.isEmpty
-                                  ? 'State'
-                                  : stateController.text),
-                              onTap: () async {
-                                final picked = await _showStatePicker(context);
-                                if (picked != null) {
-                                  setState(() {
-                                    _selState = picked;
-                                    stateController.text = picked.name;
-                                    _selCity = null;
-                                    cityController.clear();
-                                  });
-                                  await context
-                                      .read<AuthProvider>()
-                                      .loadCities(picked.id);
-                                }
-                              },
-                            ),
-                          ),
                         ],
+                      ),
+                      const SizedBox(height: 16),
+                      // Pincode
+                      _buildTextField(
+                        'Pincode',
+                        'Enter pincode',
+                        pincodeController,
+                        keyboardType: TextInputType.number,
                       ),
                       const SizedBox(height: 16),
                       // Amenities (for venues)
@@ -748,11 +773,9 @@ class _ManageServiceDetailsScreenState
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: Color(0xFF746E85),
-            fontSize: 16,
-            fontFamily: 'Onest',
-            fontWeight: FontWeight.w500,
+          style: AppTheme.bodyLarge.copyWith(
+            color: const Color(0xFF746E85),
+            fontWeight: FontWeight.w400,
           ),
         ),
         const SizedBox(height: 8),
@@ -763,13 +786,8 @@ class _ManageServiceDetailsScreenState
           readOnly: readOnly,
           onTap: onTap,
           decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: const TextStyle(
-              color: Color(0xFF7C9BBF),
-              fontSize: 16,
-              fontFamily: 'Onest',
-              fontWeight: FontWeight.w400,
-            ),
+              hintText: hint,
+              hintStyle: AppTheme.hintText.copyWith(fontSize: 16),
             filled: true,
             fillColor: Colors.white,
             contentPadding:
@@ -796,6 +814,7 @@ class _ManageServiceDetailsScreenState
               ),
             ),
           ),
+          style: AppTheme.inputText.copyWith(fontSize: 16),
         ),
       ],
     );
@@ -811,11 +830,10 @@ class _ManageServiceDetailsScreenState
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: Color(0xFF746E85),
+          style: AppTheme.bodyLarge.copyWith(
+            color: const Color(0xFF746E85),
+            fontWeight: FontWeight.w400,
             fontSize: 16,
-            fontFamily: 'Onest',
-            fontWeight: FontWeight.w500,
           ),
         ),
         const SizedBox(height: 8),
@@ -847,16 +865,16 @@ class _ManageServiceDetailsScreenState
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text(
-                    value,
-                    style: const TextStyle(
-                      color: Color(0xFF7C9BBF),
-                      fontSize: 16,
-                      fontFamily: 'Onest',
-                      fontWeight: FontWeight.w400,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  child: Builder(builder: (context) {
+                    final isPlaceholder = value.toLowerCase().contains('select') || value == 'State' || value == 'City' || value == label;
+                    return Text(
+                      value,
+                      style: isPlaceholder
+                          ? AppTheme.hintText.copyWith(fontSize: 16)
+                          : AppTheme.inputText.copyWith(fontSize: 16),
+                      overflow: TextOverflow.ellipsis,
+                    );
+                  }),
                 ),
                 const SizedBox(width: 8),
                 const Icon(
@@ -890,13 +908,9 @@ class _ManageServiceDetailsScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Select Category',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'Onest',
-                ),
+                style: AppTheme.heading5.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 16),
               Expanded(
@@ -906,10 +920,7 @@ class _ManageServiceDetailsScreenState
                   itemBuilder: (context, index) {
                     final cat = prov.categories[index];
                     return ListTile(
-                      title: Text(
-                        cat.name,
-                        style: const TextStyle(fontFamily: 'Onest'),
-                      ),
+                      title: Text(cat.name, style: AppTheme.bodyRegular),
                       onTap: () => Navigator.pop(context, cat),
                     );
                   },
@@ -940,13 +951,9 @@ class _ManageServiceDetailsScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Select Subcategory',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'Onest',
-                ),
+                style: AppTheme.heading5.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 16),
               Expanded(
@@ -956,10 +963,7 @@ class _ManageServiceDetailsScreenState
                   itemBuilder: (context, index) {
                     final subcat = prov.subcategories[index];
                     return ListTile(
-                      title: Text(
-                        subcat.name,
-                        style: const TextStyle(fontFamily: 'Onest'),
-                      ),
+                      title: Text(subcat.name, style: AppTheme.bodyRegular),
                       onTap: () => Navigator.pop(context, subcat),
                     );
                   },
@@ -990,13 +994,9 @@ class _ManageServiceDetailsScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Select State',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'Onest',
-                ),
+                style: AppTheme.heading5.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 16),
               Expanded(
@@ -1006,7 +1006,7 @@ class _ManageServiceDetailsScreenState
                   itemBuilder: (context, index) {
                     final state = prov.states[index];
                     return ListTile(
-                      title: Text(state.name),
+                      title: Text(state.name, style: AppTheme.bodyRegular),
                       onTap: () => Navigator.pop(context, state),
                     );
                   },
@@ -1039,13 +1039,9 @@ class _ManageServiceDetailsScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Select City',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'Onest',
-                ),
+                style: AppTheme.heading5.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 16),
               Expanded(
@@ -1055,7 +1051,7 @@ class _ManageServiceDetailsScreenState
                   itemBuilder: (context, index) {
                     final city = prov.cities[index];
                     return ListTile(
-                      title: Text(city.name),
+                      title: Text(city.name, style: AppTheme.bodyRegular),
                       onTap: () => Navigator.pop(context, city),
                     );
                   },
@@ -1088,13 +1084,9 @@ class _ManageServiceDetailsScreenState
               height: MediaQuery.of(context).size.height * 0.7,
               child: Column(
                 children: [
-                  const Text(
+                  Text(
                     'Select Amenities',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'Onest',
-                    ),
+                    style: AppTheme.heading5.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 16),
                   Expanded(
@@ -1105,7 +1097,7 @@ class _ManageServiceDetailsScreenState
                         final isSelected =
                             _selectedAmenities.contains(amenity);
                         return CheckboxListTile(
-                          title: Text(amenity.name),
+                          title: Text(amenity.name, style: AppTheme.bodyRegular),
                           value: isSelected,
                           onChanged: (checked) {
                             setModalState(() {

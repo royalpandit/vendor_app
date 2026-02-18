@@ -7,6 +7,7 @@ import 'package:vendor_app/core/network/token_storage.dart';
 import 'package:vendor_app/core/services/address_service.dart';
 import 'package:vendor_app/core/services/lat_lng_service.dart';
 import 'package:vendor_app/core/utils/app_colors.dart';
+import 'package:vendor_app/core/utils/app_message.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';  // For context.read()
 import 'package:vendor_app/features/profile/data/models/request/service_add_request.dart';
 import 'package:vendor_app/features/profile/data/models/request/venue_create_request.dart';
@@ -116,7 +117,7 @@ class _ManageServiceDetailsScreenState extends State<ManageServiceDetailsScreen>
         final lng = coords['lng']!;
         latitudeController.text  = '$lat';
         longitudeController.text = '$lng';
-        debugPrint('📍 Prefill lat/lng: $lat, $lng');
+        // Prefill lat/lng available
 
         try {
           final parts = await AddressService.addressPartsFromLatLng(lat: lat, lng: lng);
@@ -156,13 +157,13 @@ class _ManageServiceDetailsScreenState extends State<ManageServiceDetailsScreen>
             }
           }
         } catch (e) {
-          debugPrint('⚠️ Reverse geocoding error: $e');
+          // Reverse geocoding error
         }
       } else {
-        debugPrint('❌ Location nahi mili (coords=null)');
+        // Location not available (coords=null)
       }
     } catch (e) {
-      debugPrint('⚠️ Prefill error: $e');
+      // Prefill error
     } finally {
       if (mounted) setState(() => _locLoading = false);
     }
@@ -898,9 +899,8 @@ class _ManageServiceDetailsScreenState extends State<ManageServiceDetailsScreen>
 
   void _showMsg(String? message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message ?? 'Something went wrong')),
-    );
+    // ignore: unawaited_futures
+    AppMessage.show(context, message ?? 'Something went wrong');
   }
 }
 
@@ -913,7 +913,15 @@ class _AmenityChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Chip(
-      label: Text(text),
+      label: Text(
+        text,
+        style: TextStyle(
+          fontFamily: 'Onest',
+          fontWeight: FontWeight.w400,
+          fontSize: 14,
+          color: Colors.black87,
+        ),
+      ),
       deleteIcon: const Icon(Icons.close, size: 18),
       onDeleted: onRemove,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -961,7 +969,10 @@ class _SelectField extends StatelessWidget {
               child: Text(
                 value ?? 'Select $label',
                 style: TextStyle(
-                  color: value == null ? AppColors.textFieldColor : Colors.black87,
+                  fontFamily: 'Onest',
+                  fontWeight: FontWeight.w400,
+                  fontSize: 14,
+                  color: value == null ? AppColors.textFieldColor : const Color(0xFF171719),
                 ),
               ),
             ),
@@ -1565,6 +1576,12 @@ class _ManageServiceDetailsScreenState extends State<ManageServiceDetailsScreen>
     return TextFormField(
       controller: c,
       keyboardType: type,
+      style: TextStyle(
+        fontFamily: 'Onest',
+        fontWeight: FontWeight.w400,
+        fontSize: 14,
+        color: const Color(0xFF171719),
+      ),
       decoration: InputDecoration(
         hintText: hint ?? '',
         hintStyle: const TextStyle(color: AppColors.textFieldColor),
@@ -1603,9 +1620,8 @@ class _ManageServiceDetailsScreenState extends State<ManageServiceDetailsScreen>
 
   void _showMsg(String? message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message ?? 'Something went wrong')),
-    );
+    // ignore: unawaited_futures
+    AppMessage.show(context, message ?? 'Something went wrong');
   }
 }
 
@@ -1806,7 +1822,8 @@ class _ManageServiceDetailsScreenState extends State<ManageServiceDetailsScreen>
 
   // Helper function to show messages
   void _showMsg(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    // ignore: unawaited_futures
+    AppMessage.show(context, message);
   }
 
   // Custom TextField Widget
