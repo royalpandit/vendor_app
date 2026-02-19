@@ -106,13 +106,19 @@ class _ChatScreenState extends State<ChatScreen> {
                   padding: const EdgeInsets.all(16),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
-                    final msg = messages[index].lastMessage;
-                    
-                    // FIX: Robust isMe check. 
-                    // Compare against the logged-in ID, or the senderId passed in widget.
-                    final bool isMe = msg?.senderId == (_authenticatedUserId ?? widget.senderId);
+                    final msg = messages[index];
 
-                    return _buildMessageBubble(msg?.message ?? "", isMe);
+                    final bool isMe =
+                        msg.sender.id == (_authenticatedUserId ?? widget.senderId);
+
+                    return _buildMessageBubble(msg.message ?? "", isMe);
+                    // final msg = messages[index].lastMessage;
+                    //
+                    // // FIX: Robust isMe check.
+                    // // Compare against the logged-in ID, or the senderId passed in widget.
+                    // final bool isMe = msg?.senderId == (_authenticatedUserId ?? widget.senderId);
+                    //
+                    // return _buildMessageBubble(msg?.message ?? "", isMe);
                   },
                 );
               },

@@ -288,28 +288,46 @@ class AuthApi {
       throw ApiException('Failed to fetch inbox messages: $e');
     }
   }
-  Future<BaseResponse<List<ConversationItem>>> getConversationMessages(
+  Future<BaseResponse<List<ChatMessage>>> getConversationMessages(
       int conversationId) async {
+
     final res = await _dio.get(
       Endpoints.conversationMessages,
       queryParameters: {'conversation_id': conversationId},
     );
 
-    final decoded = res.data; // full map: {status, code, message, data: [...]}
+    final decoded = res.data;
+
     return BaseResponse.fromJson(decoded, (json) {
-      final list = (json as List);
-      return list.map((e) {
-        final msg = e as Map<String, dynamic>;
-        // Convert plain message object to ConversationItem structure
-        return ConversationItem(
-          id: conversationId,
-          lastMessage: ChatMessage.fromJson(msg),
-          sender: ChatUser.fromJson(msg['sender'] as Map<String, dynamic>),
-          receiver: ChatUser.fromJson(msg['receiver'] as Map<String, dynamic>),
-        );
-      }).toList();
+      final list = json as List;
+      return list
+          .map((e) => ChatMessage.fromJson(e as Map<String, dynamic>))
+          .toList();
     });
   }
+
+  // Future<BaseResponse<List<ConversationItem>>> getConversationMessages(
+  //     int conversationId) async {
+  //   final res = await _dio.get(
+  //     Endpoints.conversationMessages,
+  //     queryParameters: {'conversation_id': conversationId},
+  //   );
+  //
+  //   final decoded = res.data; // full map: {status, code, message, data: [...]}
+  //   return BaseResponse.fromJson(decoded, (json) {
+  //     final list = (json as List);
+  //     return list.map((e) {
+  //       final msg = e as Map<String, dynamic>;
+  //       // Convert plain message object to ConversationItem structure
+  //       return ConversationItem(
+  //         id: conversationId,
+  //         lastMessage: ChatMessage.fromJson(msg),
+  //         sender: ChatUser.fromJson(msg['sender'] as Map<String, dynamic>),
+  //         receiver: ChatUser.fromJson(msg['receiver'] as Map<String, dynamic>),
+  //       );
+  //     }).toList();
+  //   });
+  // }
 
 
   Future<BaseResponse<VendorDetails>> getVendorDetails(int vendorId) async {

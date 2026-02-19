@@ -51,41 +51,38 @@ class ConversationItem {
 class ChatMessage {
   final int id;
   final int conversationId;
-  final int senderId;
-  final int receiverId;
+  final ChatUser sender;
+  final ChatUser receiver;
   final String? message;
   final String? mediaPath;
-  final String messageType; // e.g. "text"
-  final String status; // e.g. "sent"
-  final int isDeleted;
+  final String messageType;
+  final String status;
   final DateTime? readAt;
   final DateTime? createdAt;
 
   ChatMessage({
     required this.id,
     required this.conversationId,
-    required this.senderId,
-    required this.receiverId,
+    required this.sender,
+    required this.receiver,
     required this.message,
     required this.mediaPath,
     required this.messageType,
     required this.status,
-    required this.isDeleted,
     required this.readAt,
-    this.createdAt,
+    required this.createdAt,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     return ChatMessage(
-      id: (json['id'] ?? 0) as int,
-      conversationId: (json['conversation_id'] ?? 0) as int,
-      senderId: (json['sender_id'] ?? 0) as int,
-      receiverId: (json['receiver_id'] ?? 0) as int,
-      message: json['message']?.toString(),
-      mediaPath: json['media_path']?.toString(),
-      messageType: json['message_type']?.toString() ?? 'text',
-      status: json['status']?.toString() ?? '',
-      isDeleted: (json['is_deleted'] ?? 0) as int,
+      id: json['id'] ?? 0,
+      conversationId: json['conversation_id'] ?? 0,
+      sender: ChatUser.fromJson(json['sender'] ?? {}),
+      receiver: ChatUser.fromJson(json['receiver'] ?? {}),
+      message: json['message'],
+      mediaPath: json['media_path'],
+      messageType: json['message_type'] ?? 'text',
+      status: json['status'] ?? '',
       readAt: _parseNullableDateTime(json['read_at']),
       createdAt: _parseNullableDateTime(json['created_at']),
     );
@@ -95,46 +92,18 @@ class ChatMessage {
     return {
       'id': id,
       'conversation_id': conversationId,
-      'sender_id': senderId,
-      'receiver_id': receiverId,
+      'sender': sender.toJson(),
+      'receiver': receiver.toJson(),
       'message': message,
       'media_path': mediaPath,
       'message_type': messageType,
       'status': status,
-      'is_deleted': isDeleted,
       'read_at': readAt?.toIso8601String(),
       'created_at': createdAt?.toIso8601String(),
     };
   }
-
-  ChatMessage copyWith({
-    int? id,
-    int? conversationId,
-    int? senderId,
-    int? receiverId,
-    String? message,
-    String? mediaPath,
-    String? messageType,
-    String? status,
-    int? isDeleted,
-    DateTime? readAt,
-    DateTime? createdAt,
-  }) {
-    return ChatMessage(
-      id: id ?? this.id,
-      conversationId: conversationId ?? this.conversationId,
-      senderId: senderId ?? this.senderId,
-      receiverId: receiverId ?? this.receiverId,
-      message: message ?? this.message,
-      mediaPath: mediaPath ?? this.mediaPath,
-      messageType: messageType ?? this.messageType,
-      status: status ?? this.status,
-      isDeleted: isDeleted ?? this.isDeleted,
-      readAt: readAt ?? this.readAt,
-      createdAt: createdAt ?? this.createdAt,
-    );
-  }
 }
+
 
 class ChatUser {
   final int id;
@@ -151,10 +120,10 @@ class ChatUser {
 
   factory ChatUser.fromJson(Map<String, dynamic> json) {
     return ChatUser(
-      id: (json['id'] ?? 0) as int,
-      name: json['name']?.toString() ?? '',
-      image: json['image']?.toString() ?? '',
-      email: json['email']?.toString(),
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      image: json['image'] ?? '',
+      email: json['email'],
     );
   }
 
@@ -166,21 +135,8 @@ class ChatUser {
       'email': email,
     };
   }
-
-  ChatUser copyWith({
-    int? id,
-    String? name,
-    String? image,
-    String? email,
-  }) {
-    return ChatUser(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      image: image ?? this.image,
-      email: email ?? this.email,
-    );
-  }
 }
+
 
 DateTime? _parseNullableDateTime(dynamic v) {
   if (v == null) return null;

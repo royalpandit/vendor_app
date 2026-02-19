@@ -226,7 +226,7 @@ class AuthRepository {
       return ApiFailure(e.toString());
     }
   }
-  Future<ApiResult<BaseResponse<List<ConversationItem>>>> getConversationMessages(
+  Future<ApiResult<BaseResponse<List<ChatMessage>>>> getConversationMessages(
       int conversationId) async {
     try {
       final res = await api.getConversationMessages(conversationId);

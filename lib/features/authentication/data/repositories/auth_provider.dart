@@ -61,7 +61,9 @@ class AuthProvider extends ChangeNotifier {
   NotificationSettingsResponse? notificationSettings;
   List<InboxResponse> inboxMessages = [];
   List<SubcategoryModelResponse> subcategories = [];
-  List<ConversationItem> conversationMessages = [];
+  //List<ConversationItem> conversationMessages = [];
+  List<ChatMessage> conversationMessages = [];
+
   List<AmenityModelResponse> amenities = [];
 
   DashboardResponse? dashboardData;
@@ -455,7 +457,7 @@ class AuthProvider extends ChangeNotifier {
 
     loading = false;
     switch (res) {
-      case ApiSuccess<BaseResponse<List<ConversationItem>>>():
+      case ApiSuccess<BaseResponse<List<ChatMessage>>>():
         conversationMessages = res.data.data ?? [];
         message = res.data.message ?? 'Conversation fetched successfully';
       case ApiFailure():
