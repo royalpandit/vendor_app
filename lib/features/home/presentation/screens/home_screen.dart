@@ -116,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: _buildNewDashboardCard(
-                                count: '${authProvider.dashboardData?.totalBooking ?? 0}',
+                                count: '${authProvider.dashboardData?.activeBooking ?? 0}',
                                 label: 'Active Bookings',
                                 color: const Color(0xFFE0E5FF),
                                 iconPath: AppIcons.bookingIcon,
