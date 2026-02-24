@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:vendor_app/core/network/token_storage.dart';
-import 'package:vendor_app/core/utils/app_colors.dart';
-import 'package:vendor_app/core/utils/app_icons.dart';
 import 'package:vendor_app/core/utils/app_theme.dart';
 import 'package:vendor_app/core/utils/custom_bottom_navigation.dart';
-import 'package:vendor_app/core/utils/responsive_util.dart';
 import 'package:vendor_app/core/utils/skeleton_loader.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
 import 'package:vendor_app/features/chat/presentation/screens/chat_screen.dart';
@@ -191,8 +188,7 @@ class _BookingScreenState extends State<BookingScreen> {
                           return SkeletonLoader.fullScreenBookingSkeleton();
                         }
 
-                        if (authProvider.activeBookingsModels == null ||
-                            authProvider.activeBookingsModels!.isEmpty) {
+                        if (authProvider.activeBookingsModels.isEmpty) {
                           return Center(
                             child: Text(
                               'No active bookings available.',
@@ -204,9 +200,9 @@ class _BookingScreenState extends State<BookingScreen> {
                         }
 
                         return ListView.builder(
-                          itemCount: authProvider.activeBookingsModels?.length ?? 0,
+                          itemCount: authProvider.activeBookingsModels.length,
                           itemBuilder: (context, index) {
-                            final booking = authProvider.activeBookingsModels![index];
+                            final booking = authProvider.activeBookingsModels[index];
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 12),
                               child: _buildBookingCard(

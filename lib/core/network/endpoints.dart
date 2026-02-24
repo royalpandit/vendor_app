@@ -19,6 +19,7 @@ class Endpoints {
   
   // Services
   static const serviceAdd = '/api/v1/services/add';
+  static const serviceMetaFields = '/api/service-meta-fields';
   static const serviceDetails = '/api/service-details'; // ?id=
   static const serviceList = '/api/service-list';
   static const serviceUpdate = '/api/service-update';
@@ -47,6 +48,10 @@ class Endpoints {
   static const conversationMessages = '/api/conversation/messages'; // ?conversation_id=
   static const sendMessage = '/api/messages/send';
   static const markMessagesRead = '/api/messages/read';
+  
+  // Chat / conversation actions
+  static const deleteConversation = '/api/conversation/delete';
+  static const deleteMessage = '/api/message/delete';
   
   // Location
   static const states = '/api/states';

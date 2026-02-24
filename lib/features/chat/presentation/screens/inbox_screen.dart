@@ -6,6 +6,7 @@ import 'package:vendor_app/core/utils/custom_bottom_navigation.dart';
 import 'package:vendor_app/core/utils/skeleton_loader.dart';
 import 'package:vendor_app/core/utils/app_message.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
+// import 'package:vendor_app/core/utils/app_message.dart';
 import 'package:vendor_app/features/chat/data/model/resposen/inbox_response.dart';
 import 'package:vendor_app/features/chat/presentation/screens/chat_screen.dart';
 class InboxScreen extends StatefulWidget {
@@ -81,10 +82,10 @@ class _InboxScreenState extends State<InboxScreen> {
   }
 
   // Helper function to show messages
-  void _showMsg(String message) {
-    // ignore: unawaited_futures
-    AppMessage.show(context, message);
-  }
+  // void _showMsg(String message) {
+  //   // ignore: unawaited_futures
+  //   AppMessage.show(context, message);
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -343,7 +344,7 @@ class _InboxScreenState extends State<InboxScreen> {
                                     );
                                   }
                                   
-                                  await Navigator.push(
+                                  final deleted = await Navigator.push<bool>(
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) => ChatScreen(
@@ -359,6 +360,9 @@ class _InboxScreenState extends State<InboxScreen> {
                                   if (mounted) {
                                     final prov = Provider.of<AuthProvider>(context, listen: false);
                                     await prov.fetchInboxMessages(userId);
+                                  }
+                                  if (deleted == true && mounted) {
+                                    AppMessage.show(context, 'Conversation deleted');
                                   }
                                 },
                                 child: Container(

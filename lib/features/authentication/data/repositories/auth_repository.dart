@@ -15,6 +15,8 @@ import 'package:vendor_app/features/authentication/data/models/resposne/verify_o
 import 'package:vendor_app/features/authentication/data/repositories/auth_api.dart';
 import 'package:vendor_app/features/booking/data/models/resposne/active_booking_model.dart';
 import 'package:vendor_app/features/chat/data/model/request/mark_messages_read_request.dart';
+import 'package:vendor_app/features/chat/data/model/request/conversation_delete_request.dart';
+import 'package:vendor_app/features/chat/data/model/request/message_delete_request.dart';
 import 'package:vendor_app/features/chat/data/model/resposen/conversation_chat_model.dart';
 import 'package:vendor_app/features/chat/data/model/resposen/inbox_response.dart';
 import 'package:vendor_app/features/home/data/models/request/update_booking_status_request.dart';
@@ -38,6 +40,8 @@ import 'package:vendor_app/features/profile/data/models/resposne/service_details
 import 'package:vendor_app/features/profile/data/models/resposne/states_data.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/user_portfolio_resposne.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/vendor_details_model.dart';
+import 'package:vendor_app/features/profile/data/models/resposne/service_meta_field_response.dart';
+import 'package:vendor_app/features/profile/data/models/resposne/service_meta_field_response.dart';
 
 class AuthRepository {
   final AuthApi api;
@@ -260,6 +264,17 @@ class AuthRepository {
     }
   }
 
+  Future<ApiResult<BaseResponse<List<ServiceMetaFieldResponse>>>> getServiceMetaFields(int subcategoryId) async {
+    try {
+      final res = await api.getServiceMetaFields(subcategoryId);
+      return ApiSuccess(res);
+    } on ApiException catch (e) {
+      return ApiFailure(e.message, statusCode: e.statusCode);
+    } catch (e) {
+      return ApiFailure(e.toString());
+    }
+  }
+
   Future<ApiResult<BaseResponse<VenueCreateResponse>>> addVenue(VenueCreateRequest req) async {
     try {
       final res = await api.addVenue(req);
@@ -468,6 +483,30 @@ class AuthRepository {
   Future<ApiResult<BaseResponse<Object?>>> markMessagesRead(MarkMessagesReadRequest req) async {
     try {
       final res = await api.markMessagesRead(req);
+      return ApiSuccess(res);
+    } on ApiException catch (e) {
+      return ApiFailure(e.message, statusCode: e.statusCode);
+    } catch (e) {
+      return ApiFailure(e.toString());
+    }
+  }
+
+  /// Delete entire conversation
+  Future<ApiResult<BaseResponse<Object?>>> deleteConversation(ConversationDeleteRequest req) async {
+    try {
+      final res = await api.deleteConversation(req);
+      return ApiSuccess(res);
+    } on ApiException catch (e) {
+      return ApiFailure(e.message, statusCode: e.statusCode);
+    } catch (e) {
+      return ApiFailure(e.toString());
+    }
+  }
+
+  /// Delete single message
+  Future<ApiResult<BaseResponse<Object?>>> deleteMessage(MessageDeleteRequest req) async {
+    try {
+      final res = await api.deleteMessage(req);
       return ApiSuccess(res);
     } on ApiException catch (e) {
       return ApiFailure(e.message, statusCode: e.statusCode);

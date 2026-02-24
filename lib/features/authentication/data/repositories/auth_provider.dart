@@ -13,6 +13,8 @@ import 'package:vendor_app/features/authentication/data/models/resposne/verify_o
 import 'package:vendor_app/features/authentication/data/repositories/auth_repository.dart';
 import 'package:vendor_app/features/booking/data/models/resposne/active_booking_model.dart';
 import 'package:vendor_app/features/chat/data/model/request/mark_messages_read_request.dart';
+import 'package:vendor_app/features/chat/data/model/request/conversation_delete_request.dart';
+import 'package:vendor_app/features/chat/data/model/request/message_delete_request.dart';
 import 'package:vendor_app/features/chat/data/model/resposen/conversation_chat_model.dart';
 import 'package:vendor_app/features/chat/data/model/resposen/inbox_response.dart';
 import 'package:vendor_app/features/home/data/models/request/update_booking_status_request.dart';
@@ -36,6 +38,7 @@ import 'package:vendor_app/features/profile/data/models/resposne/service_details
 import 'package:vendor_app/features/profile/data/models/resposne/states_data.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/user_portfolio_resposne.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/vendor_details_model.dart';
+import 'package:vendor_app/features/profile/data/models/resposne/service_meta_field_response.dart';
 
 class AuthProvider extends ChangeNotifier {
   AuthRepository _repo; // <- final हटाया
@@ -65,6 +68,7 @@ class AuthProvider extends ChangeNotifier {
   List<ChatMessage> conversationMessages = [];
 
   List<AmenityModelResponse> amenities = [];
+  List<ServiceMetaFieldResponse> serviceMetaFields = [];
 
   DashboardResponse? dashboardData;
   VendorDetails? vendorDetails;
@@ -315,7 +319,13 @@ class AuthProvider extends ChangeNotifier {
           message = 'No active bookings available';
         }
       } else if (res is ApiFailure<BaseResponse<List<ActiveBookingModel>>>) {
-        message = res.message ?? 'Failed to fetch active bookings';
+        // If API returned 404 it will come through as failure; treat as empty result
+        if (res.statusCode == 404) {
+          activeBookingsModels = [];
+          message = 'No active bookings available';
+        } else {
+          message = res.message ?? 'Failed to fetch active bookings';
+        }
       }
     } catch (e) {
       loading = false;
@@ -552,6 +562,25 @@ class AuthProvider extends ChangeNotifier {
       case ApiFailure():
         amenities = [];
         message = res.message ?? 'Failed to load amenities';
+    }
+    notifyListeners();
+  }
+
+  Future<void> fetchServiceMetaFields(int subcategoryId) async {
+    loading = true;
+    message = null;
+    notifyListeners();
+
+    final res = await _repo.getServiceMetaFields(subcategoryId);
+
+    loading = false;
+    switch (res) {
+      case ApiSuccess<BaseResponse<List<ServiceMetaFieldResponse>>>():
+        serviceMetaFields = res.data.data ?? [];
+        message = res.data.message;
+      case ApiFailure():
+        serviceMetaFields = [];
+        message = res.message;
     }
     notifyListeners();
   }
@@ -937,6 +966,56 @@ class AuthProvider extends ChangeNotifier {
         return true;
 
       case ApiFailure():
+        return false;
+    }
+  }
+
+  /// Delete a conversation and its messages
+  Future<bool> deleteConversation(int conversationId) async {
+    loading = true;
+    message = null;
+    notifyListeners();
+
+    final req = ConversationDeleteRequest(conversationId: conversationId);
+    final res = await _repo.deleteConversation(req);
+
+    loading = false;
+    switch (res) {
+      case ApiSuccess<BaseResponse<Object?>>():
+        message = res.data.message ?? 'Conversation deleted successfully';
+        notifyListeners();
+        return true;
+      case ApiFailure():
+        message = res.message;
+        notifyListeners();
+        return false;
+    }
+  }
+
+  /// Delete a single message in a conversation
+  Future<bool> deleteMessage({
+    required int conversationId,
+    required int messageId,
+  }) async {
+    loading = true;
+    message = null;
+    notifyListeners();
+
+    final req = MessageDeleteRequest(
+      conversationId: conversationId,
+      messageId: messageId,
+    );
+    final res = await _repo.deleteMessage(req);
+
+    loading = false;
+    switch (res) {
+      case ApiSuccess<BaseResponse<Object?>>():
+        message = res.data.message ?? 'Message deleted successfully';
+        notifyListeners();
+        return true;
+      case ApiFailure():
+        message = res.message;
+        notifyListeners();
         return false;
     }
   }

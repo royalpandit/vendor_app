@@ -6,7 +6,6 @@ import 'package:vendor_app/features/authentication/data/models/request/vendor_cr
 import 'package:vendor_app/features/authentication/data/models/resposne/category_model_response.dart';
 import 'package:vendor_app/features/authentication/data/models/resposne/subcategory_model_response.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
-import 'package:vendor_app/features/authentication/presentation/screens/phone_number_verified_screen.dart';
 import 'package:vendor_app/features/home/presentation/screens/home_screen.dart';
 
 import 'package:flutter/services.dart';
@@ -89,37 +88,37 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
   }
 
   // -------- IMAGE PICK + UPLOAD (master-image-upload) ----------
-  Future<void> _pickAndUploadx({
-    required String folder, // 'vendors' | 'venues' | 'services'
-    required void Function(String serverPath) onUploaded,
-  }) async {
-    try {
-      final picker = ImagePicker();
-      final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 90);
-      if (picked == null) return;
+  // Future<void> _pickAndUploadx({
+  //   required String folder, // 'vendors' | 'venues' | 'services'
+  //   required void Function(String serverPath) onUploaded,
+  // }) async {
+  //   try {
+  //     final picker = ImagePicker();
+  //     final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 90);
+  //     if (picked == null) return;
 
-      final uploadProv = context.read<AuthProvider>();
-      await uploadProv.upload(picked.path, folder);
-      // image picked
-      final resp = uploadProv.last;
-      if (resp == null) {
-        _showMsg(uploadProv.message ?? 'Upload failed');
-        return;
-      }
-      // We need server "path" (not url) for create-vendor
-     // onUploaded(resp.path);
-      setState(() {
-        onUploaded(resp.path); // ✅ यहीं state में set
-      });
+  //     final uploadProv = context.read<AuthProvider>();
+  //     await uploadProv.upload(picked.path, folder);
+  //     // image picked
+  //     final resp = uploadProv.last;
+  //     if (resp == null) {
+  //       _showMsg(uploadProv.message ?? 'Upload failed');
+  //       return;
+  //     }
+  //     // We need server "path" (not url) for create-vendor
+  //    // onUploaded(resp.path);
+  //     setState(() {
+  //       onUploaded(resp.path); // ✅ यहीं state में set
+  //     });
 
-      _showMsg(resp.message);
-    //  setState(() {}); // to refresh uploaded state UI
-    } on PlatformException catch (e) {
-      _showMsg('Picker error: ${e.message}');
-    } catch (e) {
-      _showMsg('Upload error: $e');
-    }
-  }
+  //     _showMsg(resp.message);
+  //   //  setState(() {}); // to refresh uploaded state UI
+  //   } on PlatformException catch (e) {
+  //     _showMsg('Picker error: ${e.message}');
+  //   } catch (e) {
+  //     _showMsg('Upload error: $e');
+  //   }
+  // }
   Future<void> _pickAndUpload({
     required String folder,
     required void Function(String serverPath) onUploaded,

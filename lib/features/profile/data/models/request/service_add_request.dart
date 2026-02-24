@@ -13,6 +13,7 @@ class ServiceAddRequest {
   final String latitude;
   final String longitude;
   final String image; // server path like "uploads/services/wedding_photo_1.jpg"
+  final Map<String, dynamic>? meta;
 
   ServiceAddRequest({
     required this.vendorId,
@@ -29,6 +30,7 @@ class ServiceAddRequest {
     required this.latitude,
     required this.longitude,
     required this.image,
+    this.meta,
   });
 
   Map<String, dynamic> toJson() => {
@@ -46,5 +48,6 @@ class ServiceAddRequest {
     "latitude": latitude,
     "longitude": longitude,
     "image": image,
+    if (meta != null) "meta": meta,
   };
 }

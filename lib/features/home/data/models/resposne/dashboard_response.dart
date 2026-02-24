@@ -5,6 +5,8 @@ class DashboardResponse {
   final int activeBooking;
   final String totalEarning;
   final List<Lead> latestLeads;
+  final List<ServiceSummary> services; // optional services summary
+  final double visibilityRatio; // computed as (totalBooking / totalLeads) * 100
 
   DashboardResponse({
     this.vendorName,
@@ -13,17 +15,34 @@ class DashboardResponse {
     required this.activeBooking,
     required this.totalEarning,
     required this.latestLeads,
+    this.services = const [],
+    required this.visibilityRatio,
   });
 
   factory DashboardResponse.fromJson(Map<String, dynamic> json) {
     var leads = json['latest_leads'] as List? ?? [];
+    var servicesJson = json['services'] as List? ?? [];
+
+    final totalLeads = (json['total_leads'] ?? 0) as int;
+    final totalBooking = (json['total_booking'] ?? 0) as int;
+
+    final computedVisibility = (totalLeads > 0)
+        ? (totalBooking / totalLeads) * 100.0
+        : 0.0;
+
     return DashboardResponse(
       vendorName: json['vendor_name'] ?? json['name'], // Support both field names
-      totalLeads: json['total_leads'] ?? 0,
-      totalBooking: json['total_booking'] ?? 0,
+      totalLeads: totalLeads,
+      totalBooking: totalBooking,
       activeBooking: json['active_booking'] ?? 0,
       totalEarning: json['total_earning']?.toString() ?? '0.00',
       latestLeads: leads.map((e) => Lead.fromJson(e)).toList(),
+      services: servicesJson
+          .map((e) => ServiceSummary.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      visibilityRatio: json['visibility_ratio'] != null
+          ? (double.tryParse(json['visibility_ratio'].toString()) ?? computedVisibility)
+          : computedVisibility,
     );
   }
 }
@@ -88,6 +107,22 @@ class VendorInfo {
     return VendorInfo(
       name: json['name'] ?? '',
       image: json['image'] ?? '',
+    );
+  }
+}
+
+class ServiceSummary {
+  final int id;
+  final String name;
+  final num basePrice;
+
+  ServiceSummary({required this.id, required this.name, required this.basePrice});
+
+  factory ServiceSummary.fromJson(Map<String, dynamic> json) {
+    return ServiceSummary(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      basePrice: json['base_price'] ?? 0,
     );
   }
 }

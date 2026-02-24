@@ -1,7 +1,6 @@
-import 'dart:convert';
-
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -10,7 +9,6 @@ import 'package:vendor_app/core/router/route_paths.dart';
 import 'package:vendor_app/core/utils/app_icons.dart';
 import 'package:vendor_app/core/utils/custom_bottom_navigation.dart';
 import 'package:vendor_app/core/utils/app_message.dart';
-import 'package:vendor_app/core/utils/skeleton_loader.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
 import 'package:vendor_app/features/profile/data/models/request/user_portfolio_request.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/vendor_details_model.dart';
@@ -18,6 +16,7 @@ import 'package:vendor_app/features/profile/presentation/screens/edit_vendor_pro
 import 'package:vendor_app/features/profile/presentation/screens/help_support_screen.dart';
 import 'package:vendor_app/features/profile/presentation/screens/manage_notification_screen.dart';
 import 'package:vendor_app/features/profile/presentation/screens/manage_service_details.dart';
+import 'package:vendor_app/features/profile/presentation/screens/service_list_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final int currentIndex;
@@ -451,6 +450,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Settings Section (no boxed background - only bottom borders)
   Widget _buildSettingsSection() {
     final items = <_SettingsItem>[
+      // Temporarily hiding services tab; will re-enable later
+      // _SettingsItem(
+      //   iconData: CupertinoIcons.list_bullet,
+      //   iconBgColor: const Color(0xFF4CAF50),
+      //   title: 'My Services',
+      //   description: 'View and manage your services list',
+      //   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ServiceListScreen())),
+      // ),
       _SettingsItem(
         iconPath: AppIcons.briefcaseIcon,
         iconBgColor: const Color(0xFF00AEFF),
@@ -539,11 +546,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                       child: Center(
-                        child: Image.asset(
-                          it.iconPath,
-                          width: 24,
-                          height: 24,
-                        ),
+                        child: it.iconData != null
+                            ? Icon(it.iconData, size: 24, color: Colors.white)
+                            : Image.asset(
+                                it.iconPath ?? '',
+                                width: 24,
+                                height: 24,
+                              ),
                       ),
                     ),
                     const SizedBox(width: 20),
@@ -591,7 +600,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
 class _SettingsItem {
-  final String iconPath;
+  // if iconData is supplied we ignore iconPath and show a native Icon
+  final IconData? iconData;
+  final String? iconPath;
   final Color iconBgColor;
   final String title;
   final String description;
@@ -599,7 +610,8 @@ class _SettingsItem {
   final bool isLast;
   
   _SettingsItem({
-    required this.iconPath,
+    this.iconData,
+    this.iconPath,
     required this.iconBgColor,
     required this.title,
     required this.description,

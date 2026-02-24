@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
-import 'package:vendor_app/core/utils/skeleton_loader.dart';
 import 'package:vendor_app/core/network/token_storage.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
 

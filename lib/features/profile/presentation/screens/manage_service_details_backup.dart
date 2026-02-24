@@ -124,7 +124,7 @@ class _ManageServiceDetailsScreenState extends State<ManageServiceDetailsScreen>
           if (parts != null) {
             final city   = (parts.locality ?? '').trim();
             final state  = (parts.administrativeArea ?? '').trim();
-            final fmt    = (parts.formatted ?? '').trim();
+            final fmt    = (parts.formatted ).trim();
 
             if (city.isNotEmpty)  cityController.text = city;
             if (state.isNotEmpty) stateController.text = state;

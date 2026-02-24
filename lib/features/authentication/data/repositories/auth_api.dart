@@ -15,6 +15,8 @@ import 'package:vendor_app/features/authentication/data/models/resposne/verify_o
 import 'package:path/path.dart' as p;
 import 'package:vendor_app/features/booking/data/models/resposne/active_booking_model.dart';
 import 'package:vendor_app/features/chat/data/model/request/mark_messages_read_request.dart';
+import 'package:vendor_app/features/chat/data/model/request/conversation_delete_request.dart';
+import 'package:vendor_app/features/chat/data/model/request/message_delete_request.dart';
 import 'package:vendor_app/features/chat/data/model/resposen/conversation_chat_model.dart';
 import 'package:vendor_app/features/chat/data/model/resposen/inbox_response.dart';
 import 'package:vendor_app/features/home/data/models/request/update_booking_status_request.dart';
@@ -38,6 +40,7 @@ import 'package:vendor_app/features/profile/data/models/resposne/service_details
 import 'package:vendor_app/features/profile/data/models/resposne/states_data.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/user_portfolio_resposne.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/vendor_details_model.dart';
+import 'package:vendor_app/features/profile/data/models/resposne/service_meta_field_response.dart';
 
 class AuthApi {
   final Dio _dio;
@@ -200,6 +203,17 @@ class AuthApi {
         return bookings.map((e) => ActiveBookingModel.fromJson(e as Map<String, dynamic>)).toList();
 
        });
+    } on DioError catch (dioErr) {
+      // treat 404 as empty list rather than error
+      if (dioErr.response?.statusCode == 404) {
+        return BaseResponse<List<ActiveBookingModel>>(
+          status: 'success',
+          code: 404,
+          message: 'No bookings',
+          data: [],
+        );
+      }
+      throw ApiException('Failed to fetch active bookings: $dioErr');
     } catch (e) {
       throw ApiException('Failed to fetch active bookings: $e');
     }
@@ -342,6 +356,19 @@ class AuthApi {
     final decoded = res.data; // {status, code, message, data:{...}}
     return BaseResponse.fromJson(decoded, (json) {
       return ServiceAddResponse.fromJson(json as Map<String, dynamic>);
+    });
+  }
+
+  // GET /api/service-meta-fields/{subcategory_id}
+  Future<BaseResponse<List<ServiceMetaFieldResponse>>> getServiceMetaFields(int subcategoryId) async {
+    final res = await _dio.get('${Endpoints.serviceMetaFields}/$subcategoryId');
+    final decoded = res.data; // {status, code, data: [ ... ]}
+
+    return BaseResponse.fromJson(decoded, (json) {
+      final list = json as List? ?? [];
+      return list
+          .map((e) => ServiceMetaFieldResponse.fromJson(e as Map<String, dynamic>))
+          .toList();
     });
   }
 
@@ -533,6 +560,28 @@ class AuthApi {
   Future<BaseResponse<Object?>> markMessagesRead(MarkMessagesReadRequest req) async {
     final res = await _dio.post(
       Endpoints.markMessagesRead,
+      data: req.toJson(),
+    );
+    final decoded = res.data;
+
+    return BaseResponse.fromJson(decoded, (json) => json);
+  }
+
+  /// POST /api/conversation/delete
+  Future<BaseResponse<Object?>> deleteConversation(ConversationDeleteRequest req) async {
+    final res = await _dio.post(
+      Endpoints.deleteConversation,
+      data: req.toJson(),
+    );
+    final decoded = res.data;
+
+    return BaseResponse.fromJson(decoded, (json) => json);
+  }
+
+  /// POST /api/message/delete
+  Future<BaseResponse<Object?>> deleteMessage(MessageDeleteRequest req) async {
+    final res = await _dio.post(
+      Endpoints.deleteMessage,
       data: req.toJson(),
     );
     final decoded = res.data;

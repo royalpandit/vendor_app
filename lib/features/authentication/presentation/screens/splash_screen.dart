@@ -50,7 +50,7 @@ class _SplashScreenState extends State<SplashScreen> {
     }
 
     try {
-      final pos = await Geolocator.getCurrentPosition(
+      await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
       // vendor position captured

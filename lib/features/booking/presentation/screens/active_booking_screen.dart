@@ -159,13 +159,12 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
                               return Center(child: CircularProgressIndicator());
                             }
 
-                            if (authProvider.activeBookingsModels == null ||
-                                authProvider.activeBookingsModels!.isEmpty) {
+                            if (authProvider.activeBookingsModels.isEmpty) {
                               return Center(child: Text('No active bookings available.'));
                             }
 
                             // Filter to show only confirmed bookings
-                            final confirmedBookings = authProvider.activeBookingsModels!
+                            final confirmedBookings = authProvider.activeBookingsModels
                                 .where((booking) => booking.status.toLowerCase() == 'confirmed')
                                 .toList();
 

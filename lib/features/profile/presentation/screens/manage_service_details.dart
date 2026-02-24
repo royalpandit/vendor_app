@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -12,6 +13,7 @@ import 'package:vendor_app/core/utils/app_icons.dart';
 import 'package:vendor_app/core/utils/app_theme.dart';
 import 'package:vendor_app/features/authentication/data/models/resposne/category_model_response.dart';
 import 'package:vendor_app/features/authentication/data/models/resposne/subcategory_model_response.dart';
+import 'package:vendor_app/features/profile/data/models/resposne/service_meta_field_response.dart';
 import 'package:vendor_app/core/utils/app_message.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
 import 'package:vendor_app/features/profile/data/models/request/service_add_request.dart';
@@ -71,6 +73,9 @@ class _ManageServiceDetailsScreenState
   String? _selectedCategoryName;
   int? _selectedSubcategoryId;
   String? _selectedSubcategoryName;
+  // Dynamic meta fields for selected subcategory
+  List<ServiceMetaFieldResponse> _metaFields = [];
+  final Map<String, dynamic> _metaValues = {};
 
   @override
   void initState() {
@@ -92,6 +97,8 @@ class _ManageServiceDetailsScreenState
   }
 
   Future<void> _loadAmenities() async {
+    // ensure we are past the build phase before triggering provider notifications
+    await Future.delayed(Duration.zero);
     final p = context.read<AuthProvider>();
     await p.fetchAmenities();
     if (mounted) setState(() => _allAmenities = p.amenities);
@@ -264,7 +271,20 @@ class _ManageServiceDetailsScreenState
         );
         
         final ok = await context.read<AuthProvider>().createVenue(request);
-        _showMsg(context.read<AuthProvider>().message ?? (ok ? 'Venue created' : 'Failed'));
+        final vmsg = context.read<AuthProvider>().message ?? (ok ? 'Venue created' : 'Failed');
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(ok ? 'Success' : 'Error'),
+            content: Text(vmsg),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
         if (ok && mounted) Navigator.pop(context);
       } else {
         // Create service request
@@ -291,10 +311,24 @@ class _ManageServiceDetailsScreenState
           latitude: latitudeController.text.trim(),
           longitude: longitudeController.text.trim(),
           image: uploadedPath ?? '',
+          meta: _metaValues.isNotEmpty ? Map<String, dynamic>.from(_metaValues) : null,
         );
         
         final ok = await context.read<AuthProvider>().createService(request);
-        _showMsg(context.read<AuthProvider>().message ?? (ok ? 'Service added' : 'Failed'));
+        final msg = context.read<AuthProvider>().message ?? (ok ? 'Service added' : 'Failed');
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(ok ? 'Success' : 'Error'),
+            content: Text(msg),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
         if (ok && mounted) Navigator.pop(context);
       }
     } catch (e) {
@@ -398,10 +432,46 @@ class _ManageServiceDetailsScreenState
                               _selectedSubcategoryName = picked.name;
                               subcategoryController.text = picked.name;
                             });
+                            // fetch meta fields for this subcategory
+                            await context.read<AuthProvider>().fetchServiceMetaFields(picked.id);
+                            final meta = context.read<AuthProvider>().serviceMetaFields;
+                            setState(() {
+                              _metaFields = meta;
+                              _metaValues.clear();
+                              for (final f in _metaFields) {
+                                final idKey = '${f.id}';
+                                // initialize default values keyed by field id (string)
+                                switch (f.type) {
+                                  case 'toggle':
+                                    _metaValues[idKey] = false;
+                                    break;
+                                  case 'multi_select':
+                                    _metaValues[idKey] = <String>[];
+                                    break;
+                                  default:
+                                    _metaValues[idKey] = null;
+                                }
+                              }
+                            });
                           }
                         },
                       ),
                       const SizedBox(height: 16),
+                      // Dynamic Meta Fields
+                      if (_metaFields.isNotEmpty) ...[
+                        const Text(
+                          'Additional Details',
+                          style: TextStyle(
+                            color: Color(0xFF746E85),
+                            fontSize: 18,
+                            fontFamily: 'Onest',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ..._buildMetaFields(),
+                        const SizedBox(height: 16),
+                      ],
                       // Description
                       _buildTextField(
                         'Description',
@@ -616,7 +686,7 @@ class _ManageServiceDetailsScreenState
                             ),
                           )
                         : const Text(
-                            'Update',
+                            'Submit',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -879,7 +949,7 @@ class _ManageServiceDetailsScreenState
                 const SizedBox(width: 8),
                 const Icon(
                   Icons.keyboard_arrow_down,
-                  color: Color(0xFF7C9BBF),
+                  color: Color(0xFFFF4678),
                   size: 24,
                 ),
               ],
@@ -1062,6 +1132,164 @@ class _ManageServiceDetailsScreenState
         );
       },
     );
+  }
+
+  List<Widget> _buildMetaFields() {
+    return _metaFields.map((f) {
+      final key = '${f.id}'; // use field id as the map key (string)
+      switch (f.type) {
+        case 'toggle':
+          return SwitchListTile(
+            title: Text(f.label, style: AppTheme.bodyLarge.copyWith(color: const Color(0xFF746E85))),
+            value: (_metaValues[key] as bool?) ?? false,
+            activeThumbColor: const Color(0xFFFF4678),
+            trackColor: MaterialStateProperty.resolveWith((states) =>
+                states.contains(MaterialState.selected)
+                    ? const Color(0xFFFFA3B1)
+                    : null),
+            onChanged: (v) => setState(() => _metaValues[key] = v),
+          );
+
+        case 'select':
+          final current = _metaValues[key] as String?;
+          final opts = f.options ?? [];
+          if (opts.isEmpty) {
+            // fallback to plain text input if no options provided
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(f.label, style: AppTheme.bodyLarge.copyWith(color: const Color(0xFF746E85))),
+                const SizedBox(height: 8),
+                TextFormField(
+                  initialValue: current,
+                  decoration: InputDecoration(
+                    hintText: f.label,
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFFDBE2EA)),
+                    ),
+                  ),
+                  onChanged: (v) => _metaValues[key] = v,
+                  style: AppTheme.inputText,
+                ),
+                const SizedBox(height: 12),
+              ],
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(f.label, style: AppTheme.bodyLarge.copyWith(color: const Color(0xFF746E85))),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFDBE2EA))),
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  value: current,
+                  hint: Text('Select ${f.label}', style: AppTheme.hintText),
+                  underline: const SizedBox.shrink(),
+                  items: opts.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+                  onChanged: (v) => setState(() => _metaValues[key] = v),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          );
+
+        case 'multi_select':
+          final List<String> selected = List<String>.from(_metaValues[key] ?? []);
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(f.label, style: AppTheme.bodyLarge.copyWith(color: const Color(0xFF746E85))),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: selected.map((s) => Chip(label: Text(s))).toList(),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton(
+                onPressed: () async {
+                  final res = await _showMultiSelectDialog(f);
+                  if (res != null) setState(() => _metaValues[key] = res);
+                },
+                child: const Text('Select'),
+              ),
+              const SizedBox(height: 12),
+            ],
+          );
+
+        case 'number':
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(f.label, style: AppTheme.bodyLarge.copyWith(color: const Color(0xFF746E85))),
+              const SizedBox(height: 8),
+              TextFormField(
+                initialValue: _metaValues[key]?.toString(),
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(hintText: f.label, filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFDBE2EA)))),
+                onChanged: (v) => _metaValues[key] = num.tryParse(v) ?? v,
+                style: AppTheme.inputText,
+              ),
+              const SizedBox(height: 12),
+            ],
+          );
+
+        default:
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(f.label, style: AppTheme.bodyLarge.copyWith(color: const Color(0xFF746E85))),
+              const SizedBox(height: 8),
+              TextFormField(
+                initialValue: _metaValues[key]?.toString(),
+                decoration: InputDecoration(hintText: f.label, filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFDBE2EA)))),
+                onChanged: (v) => _metaValues[key] = v,
+                style: AppTheme.inputText,
+              ),
+              const SizedBox(height: 12),
+            ],
+          );
+      }
+    }).toList();
+  }
+
+  Future<List<String>?> _showMultiSelectDialog(ServiceMetaFieldResponse f) async {
+    final opts = f.options ?? [];
+    final idKey = '${f.id}';
+    final current = List<String>.from(_metaValues[idKey] ?? []);
+    final selected = <String>{...current};
+
+    return showDialog<List<String>>(context: context, builder: (context) {
+      return AlertDialog(
+        title: Text('Select ${f.label}'),
+        content: StatefulBuilder(builder: (context, setState) {
+          return SizedBox(
+            width: double.maxFinite,
+            child: ListView(
+              shrinkWrap: true,
+              children: opts.map((o) {
+                final isSel = selected.contains(o);
+                return CheckboxListTile(
+                  value: isSel,
+                  title: Text(o),
+                  onChanged: (v) => setState(() => v == true ? selected.add(o) : selected.remove(o)),
+                );
+              }).toList(),
+            ),
+          );
+        }),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, null), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, selected.toList()), child: const Text('OK')),
+        ],
+      );
+    });
   }
 
   void _openAmenityPicker() async {

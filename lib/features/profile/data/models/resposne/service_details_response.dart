@@ -17,6 +17,7 @@ class ServiceDetailsResponse {
   final List<ServiceImage> images;
   final VendorInfo? vendor;
   final SubcategoryInfo? subcategory;
+  final Map<String, dynamic>? meta;
 
   ServiceDetailsResponse({
     required this.id,
@@ -37,6 +38,7 @@ class ServiceDetailsResponse {
     required this.images,
     this.vendor,
     this.subcategory,
+    this.meta,
   });
 
   factory ServiceDetailsResponse.fromJson(Map<String, dynamic> json) {
@@ -46,7 +48,12 @@ class ServiceDetailsResponse {
       subCategoryId: json['sub_category_id'] ?? 0,
       name: json['name'] ?? '',
       description: json['description'],
-      basePrice: (json['base_price'] ?? 0).toDouble(),
+      basePrice: (() {
+        final v = json['base_price'];
+        if (v == null) return 0.0;
+        if (v is num) return v.toDouble();
+        return double.tryParse(v.toString()) ?? 0.0;
+      })(),
       priceType: json['price_type'] ?? 'fixed',
       location: json['location'] ?? '',
       status: json['status'] ?? false,
@@ -63,6 +70,9 @@ class ServiceDetailsResponse {
       vendor: json['vendor'] != null ? VendorInfo.fromJson(json['vendor']) : null,
       subcategory: json['subcategory'] != null
           ? SubcategoryInfo.fromJson(json['subcategory'])
+          : null,
+      meta: json['meta'] != null && json['meta'] is Map
+          ? (json['meta'] as Map).cast<String, dynamic>()
           : null,
     );
   }
