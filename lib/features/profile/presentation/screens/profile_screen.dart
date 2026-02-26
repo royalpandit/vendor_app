@@ -494,7 +494,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: 'Logout',
         description: 'Logout from your account, and login whenever needed',
         onTap: () async {
+          // clear both persisted token and the in‑memory cache held by AuthProvider
           await TokenStorage.clear();
+          context.read<AuthProvider>().clearCache();
           if (!mounted) return;
           Navigator.pushReplacementNamed(context, RoutePaths.phoneVerify);
         },

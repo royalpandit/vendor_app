@@ -154,8 +154,8 @@ class AuthApi {
           statusCode: 403,
         );
       } else if (e.response?.statusCode == 401) {
-        // Clear expired token
-        Session.token = null;
+        // Don't clear Session.token — it may still be valid; let the
+        // persistent storage keep the user logged in across restarts.
         throw ApiException(
           'Session expired. Please login again.',
           statusCode: 401,

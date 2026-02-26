@@ -135,13 +135,17 @@ class _InboxScreenState extends State<InboxScreen> {
                     // Subtitle
                     Consumer<AuthProvider>(
                       builder: (context, authProvider, child) {
-                        return Text(
-                          '${authProvider.dashboardData?.totalLeads ?? 0} new leads are waiting for you! 🔥',
-                          style: TextStyle(
-                            color: const Color(0xFF5C5C5C),
-                            fontSize: 14,
-                            fontFamily: 'Onest',
-                            fontWeight: FontWeight.w400,
+                        return Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '${authProvider.dashboardData?.totalLeads ?? 0} new leads are waiting for you! 🔥',
+                            textAlign: TextAlign.left,
+                            style: TextStyle(
+                              color: const Color(0xFF5C5C5C),
+                              fontSize: 14,
+                              fontFamily: 'Onest',
+                              fontWeight: FontWeight.w400,
+                            ),
                           ),
                         );
                       },

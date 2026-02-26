@@ -20,23 +20,48 @@ class DashboardResponse {
   });
 
   factory DashboardResponse.fromJson(Map<String, dynamic> json) {
-    var leads = json['latest_leads'] as List? ?? [];
+    // Some API responses nest counts inside `leads` and `bookings` objects.
+    // The old implementation assumed flat keys like `total_leads`,
+    // `total_booking`, and `active_booking`.  Newer responses look like:
+    //
+    // {
+    //   "leads": {"total": 2, "today": 0, "new": 2},
+    //   "bookings": {"total": 3, "active": 1},
+    //   "total_earning": 3000.00,
+    //   "latest_leads": [...]
+    // }
+    //
+    // Fallback to the legacy keys if the nested structure is not present.
+
+    var leadsList = json['latest_leads'] as List? ?? [];
     var servicesJson = json['services'] as List? ?? [];
 
-    final totalLeads = (json['total_leads'] ?? 0) as int;
-    final totalBooking = (json['total_booking'] ?? 0) as int;
+    final leadsData = json['leads'] as Map<String, dynamic>?;
+    final bookingsData = json['bookings'] as Map<String, dynamic>?;
+
+    final totalLeads = leadsData != null
+        ? (leadsData['total'] ?? 0) as int
+        : (json['total_leads'] ?? 0) as int;
+
+    final totalBooking = bookingsData != null
+        ? (bookingsData['total'] ?? 0) as int
+        : (json['total_booking'] ?? 0) as int;
 
     final computedVisibility = (totalLeads > 0)
         ? (totalBooking / totalLeads) * 100.0
         : 0.0;
 
+    final activeBooking = bookingsData != null
+        ? (bookingsData['active'] ?? 0) as int
+        : (json['active_booking'] ?? 0) as int;
+
     return DashboardResponse(
       vendorName: json['vendor_name'] ?? json['name'], // Support both field names
       totalLeads: totalLeads,
       totalBooking: totalBooking,
-      activeBooking: json['active_booking'] ?? 0,
+      activeBooking: activeBooking,
       totalEarning: json['total_earning']?.toString() ?? '0.00',
-      latestLeads: leads.map((e) => Lead.fromJson(e)).toList(),
+      latestLeads: leadsList.map((e) => Lead.fromJson(e)).toList(),
       services: servicesJson
           .map((e) => ServiceSummary.fromJson(e as Map<String, dynamic>))
           .toList(),

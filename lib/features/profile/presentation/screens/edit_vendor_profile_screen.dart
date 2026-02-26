@@ -10,6 +10,8 @@ import 'package:vendor_app/features/authentication/data/models/resposne/subcateg
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/vendor_details_model.dart';
 import 'package:vendor_app/core/utils/app_message.dart';
+import 'package:vendor_app/core/utils/result_popup.dart';
+import 'package:vendor_app/features/profile/presentation/screens/profile_screen.dart';
 
 class EditVendorProfileScreen extends StatefulWidget {
   final VendorDetails vendorDetails;
@@ -63,9 +65,6 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
   void initState() {
     super.initState();
     _prefillVendorData();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AuthProvider>().fetchCategories();
-    });
   }
 
   void _prefillVendorData() {
@@ -105,45 +104,43 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
     _lng = vendor.longitude ?? '77.2090';
 
     // Category/Subcategory will be set after fetching from API
+    // Note: vendor.categoryId is actually the SUBCATEGORY ID stored in business_category
     if (vendor.categoryId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _loadCategoryAndSubcategory(vendor.categoryId!);
+        _resolveAndLoadCategorySubcategory(vendor.categoryId!);
       });
     }
   }
 
-  Future<void> _loadCategoryAndSubcategory(int categoryId) async {
-    await context.read<AuthProvider>().fetchCategories();
-    final cats = context.read<AuthProvider>().categories;
-    
-    final category = cats.firstWhere(
-      (cat) => cat.id == categoryId,
-      orElse: () => cats.first,
-    );
-    
-    setState(() {
-      _selectedCategory = category;
-    });
+  /// The vendor profile stores a subcategory ID in `business_category`.
+  /// Categories and subcategories are from separate APIs.
+  /// We iterate through categories and find which one contains the vendor's subcategory.
+  Future<void> _resolveAndLoadCategorySubcategory(int subcategoryId) async {
+    final prov = context.read<AuthProvider>();
+    await prov.fetchCategories();
+    final cats = prov.categories;
+    if (cats.isEmpty) return;
 
-    await context.read<AuthProvider>().fetchSubcategories(categoryId);
-    
-    // After fetching subcategories, find the matching one by ID if vendor has a category
-    final subs = context.read<AuthProvider>().subcategories;
-    if (widget.vendorDetails.categoryId != null && subs.isNotEmpty) {
-      try {
-        final matchingSubcategory = subs.firstWhere(
-          (sub) => sub.categoryId == widget.vendorDetails.categoryId,
-        );
+    for (final cat in cats) {
+      await prov.fetchSubcategories(cat.id);
+      final subs = prov.subcategories;
+      final match = subs.where((s) => s.id == subcategoryId).firstOrNull;
+      if (match != null) {
+        if (!mounted) return;
         setState(() {
-          _selectedSubcategory = matchingSubcategory;
+          _selectedCategory = cat;
+          _selectedSubcategory = match;
         });
-      } catch (e) {
-        // No matching subcategory found, leave as null
-        setState(() {
-          _selectedSubcategory = null;
-        });
+        return;
       }
     }
+
+    // Fallback: no match found, just select first category
+    if (!mounted) return;
+    setState(() {
+      _selectedCategory = cats.first;
+    });
+    await prov.fetchSubcategories(cats.first.id);
   }
 
   @override
@@ -200,7 +197,12 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
     }
 
     if (_selectedCategory == null) {
-      _showMsg('Please select a business category');
+      _showMsg('Category not loaded yet. Please wait.');
+      return;
+    }
+
+    if (_selectedSubcategory == null) {
+      _showMsg('Please select a subcategory');
       return;
     }
 
@@ -212,7 +214,7 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
       'email': _emailController.text.trim(),
       'adhar_number': _aadharController.text.trim(),
       'business_name': _businessNameController.text.trim(),
-      'business_category': _selectedSubcategory?.id ?? _selectedCategory!.id,
+      'business_category': _selectedSubcategory!.id,
       'experience_in_business': int.tryParse(_experienceController.text.trim()) ?? 0,
       'price_range': priceRange,
       'service_coverage': _coverageController.text.trim(),
@@ -232,11 +234,17 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
     final ok = await vendorProv.updateVendorData(vendorId, data);
 
     if (ok) {
-      _showMsg(vendorProv.message ?? 'Profile updated successfully');
       if (!mounted) return;
-      Navigator.pop(context, true); // Return true to indicate success
+      await ResultPopup.show(context, success: true, message: vendorProv.message ?? 'Profile updated successfully');
+      if (!mounted) return;
+      // Navigate to profile screen (replace current route so back button doesn't return here)
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => ProfileScreen(currentIndex: 3)),
+      );
     } else {
-      _showMsg(vendorProv.message ?? 'Failed to update profile');
+      if (!mounted) return;
+      await ResultPopup.show(context, success: false, message: vendorProv.message ?? 'Failed to update profile');
     }
   }
 
@@ -377,7 +385,6 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
 
   // STEP 1: BUSINESS INFO
   Widget _buildBusinessInfoStep(AuthProvider cats) {
-    final categories = cats.categories;
     final subs = cats.subcategories;
 
     return Form(
@@ -406,20 +413,43 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            _buildCategoryDropdown(
-              label: 'Business Category',
-              value: _selectedCategory,
-              items: categories,
-              onChanged: (cat) async {
-                setState(() {
-                  _selectedCategory = cat;
-                  _selectedSubcategory = null;
-                });
-                if (cat != null) {
-                  await context.read<AuthProvider>().fetchSubcategories(cat.id);
-                }
-              },
-            ),
+            // Category is auto-resolved and non-editable
+            if (_selectedCategory != null) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.category_outlined, color: Color(0xFFFF4678), size: 20),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Business Category', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                        const SizedBox(height: 2),
+                        Text(_selectedCategory!.name, style: const TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Text('Loading category...', style: TextStyle(color: Colors.grey.shade500)),
+              ),
+            ],
             const SizedBox(height: 15),
             _buildSubcategoryDropdown(
               label: 'Subcategory',
@@ -672,38 +702,6 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
       validator: (value) {
         if (value == null || value.isEmpty) {
           return 'Please enter $label';
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildCategoryDropdown({
-    required String label,
-    required CategoryModelResponse? value,
-    required List<CategoryModelResponse> items,
-    required void Function(CategoryModelResponse?) onChanged,
-  }) {
-    return DropdownButtonFormField<CategoryModelResponse>(
-      value: value,
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        filled: true,
-        fillColor: Colors.white,
-      ),
-      items: items.map((cat) {
-        return DropdownMenuItem<CategoryModelResponse>(
-          value: cat,
-          child: Text(cat.name),
-        );
-      }).toList(),
-      onChanged: onChanged,
-      validator: (value) {
-        if (value == null) {
-          return 'Please select a category';
         }
         return null;
       },

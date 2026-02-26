@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:vendor_app/core/network/token_storage.dart';
@@ -8,6 +9,7 @@ import 'package:vendor_app/core/utils/skeleton_loader.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
 import 'package:vendor_app/features/chat/presentation/screens/chat_screen.dart';
 import 'package:vendor_app/core/utils/app_message.dart';
+import 'package:vendor_app/core/utils/result_popup.dart';
 
 class BookingScreen extends StatefulWidget {
   final int currentIndex;
@@ -17,18 +19,50 @@ class BookingScreen extends StatefulWidget {
   _BookingScreenState createState() => _BookingScreenState();
 }
 class _BookingScreenState extends State<BookingScreen> {
+  late TextEditingController _searchController;
+  String _searchQuery = '';
+  String? _selectedStatus;
+  DateTime? _selectedDate;
+  String? _cachedVendorName;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     // Fetch the user ID from TokenStorage dynamically
+    _searchController = TextEditingController();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
+    });
     _fetchUserIdAndBookings();
+    // Refresh data every 10 seconds
+    _refreshTimer = Timer.periodic(Duration(seconds: 10), (_) {
+      _fetchUserIdAndBookings();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchUserIdAndBookings() async {
     // Get user data from TokenStorage
     final userData = await TokenStorage.getUserData();
     final int userId = userData?.id ?? 0;  // Use a default value if userId is null
+
+    final authProvider = context.read<AuthProvider>();
+    // Use vendor name from API (the actual business name), not the OTP user name
+    final vendorName = authProvider.vendorDetails?.name;
+    if (vendorName != null && vendorName.isNotEmpty) {
+      if (mounted) setState(() => _cachedVendorName = vendorName);
+    } else if (_cachedVendorName == null && userData != null && userData.name.isNotEmpty) {
+      if (mounted) setState(() => _cachedVendorName = userData.name);
+    }
 
     if (userId != 0) {
       final authProvider = context.read<AuthProvider>();
@@ -68,7 +102,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       Consumer<AuthProvider>(
                         builder: (context, authProvider, child) {
                           return Text(
-                            'Welcome Back, ${authProvider.vendorDetails?.name ?? 'Vendor'}',
+                            'Welcome Back, ${_cachedVendorName ?? authProvider.vendorDetails?.name ?? 'Vendor'}',
                             style: TextStyle(
                               color: const Color(0xFF171719),
                               fontSize: 26,
@@ -124,6 +158,7 @@ class _BookingScreenState extends State<BookingScreen> {
                                   SizedBox(width: 6),
                                   Expanded(
                                     child: TextField(
+                                      controller: _searchController,
                                       decoration: InputDecoration(
                                         hintText: 'Search for bookings',
                                         hintStyle: TextStyle(
@@ -199,10 +234,58 @@ class _BookingScreenState extends State<BookingScreen> {
                           );
                         }
 
+                        // Show all bookings with search, status, and date filters
+                        final allBookings = authProvider.activeBookingsModels;
+                        final filtered = allBookings.where((b) {
+                          // Apply search filter
+                          if (_searchQuery.isNotEmpty) {
+                            final name = b.user.name.toLowerCase();
+                            final service = b.serviceName.toLowerCase();
+                            if (!name.contains(_searchQuery) && !service.contains(_searchQuery)) {
+                              return false;
+                            }
+                          }
+                          
+                          // Apply status filter
+                          if (_selectedStatus != null) {
+                            if (b.status.toLowerCase() != _selectedStatus!.toLowerCase()) {
+                              return false;
+                            }
+                          }
+                          
+                          // Apply date filter
+                          if (_selectedDate != null) {
+                            try {
+                              final bookingDateStr = b.eventDate;
+                              final bookingDate = DateTime.parse(bookingDateStr);
+                              final selectedDateOnly = DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day);
+                              final bookingDateOnly = DateTime(bookingDate.year, bookingDate.month, bookingDate.day);
+                              if (bookingDateOnly != selectedDateOnly) {
+                                return false;
+                              }
+                            } catch (e) {
+                              return false;
+                            }
+                          }
+                          
+                          return true;
+                        }).toList();
+
+                        if (filtered.isEmpty) {
+                          return Center(
+                            child: Text(
+                              'No active bookings available.',
+                              style: AppTheme.bodyRegular.copyWith(
+                                color: AppTheme.gray,
+                              ),
+                            ),
+                          );
+                        }
+
                         return ListView.builder(
-                          itemCount: authProvider.activeBookingsModels.length,
+                          itemCount: filtered.length,
                           itemBuilder: (context, index) {
-                            final booking = authProvider.activeBookingsModels[index];
+                            final booking = filtered[index];
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 12),
                               child: _buildBookingCard(
@@ -485,91 +568,91 @@ class _BookingScreenState extends State<BookingScreen> {
           Row(
             children: [
               // Message Button
-              GestureDetector(
-                onTap: () async {
-                  // Navigate to chat with this user. Ensure we don't use a deactivated context.
-                  final userData = await TokenStorage.getUserData();
-                  final vendorId = userData?.id ?? 0;
+              // GestureDetector(
+              //   onTap: () async {
+              //     // Navigate to chat with this user. Ensure we don't use a deactivated context.
+              //     final userData = await TokenStorage.getUserData();
+              //     final vendorId = userData?.id ?? 0;
 
-                  if (vendorId == 0) return;
+              //     if (vendorId == 0) return;
 
-                  final authProvider = context.read<AuthProvider>();
+              //     final authProvider = context.read<AuthProvider>();
 
-                  // Fetch current inbox to check for an existing conversation
-                  await authProvider.fetchInboxMessages(vendorId);
+              //     // Fetch current inbox to check for an existing conversation
+              //     await authProvider.fetchInboxMessages(vendorId);
 
-                  int conversationId = 0;
-                  final inboxMessages = authProvider.inboxMessages;
-                  for (var conversation in inboxMessages) {
-                    final isSender = conversation.sender.id == vendorId;
-                    final otherPersonId = isSender ? conversation.receiver.id : conversation.sender.id;
-                    if (otherPersonId == userId) {
-                      conversationId = conversation.id;
-                      break;
-                    }
-                  }
+              //     int conversationId = 0;
+              //     final inboxMessages = authProvider.inboxMessages;
+              //     for (var conversation in inboxMessages) {
+              //       final isSender = conversation.sender.id == vendorId;
+              //       final otherPersonId = isSender ? conversation.receiver.id : conversation.sender.id;
+              //       if (otherPersonId == userId) {
+              //         conversationId = conversation.id;
+              //         break;
+              //       }
+              //     }
 
-                  // If no conversation exists, create one by sending a short initial message.
-                  // This lets the server create the conversation entry and assign an id.
-                  if (conversationId == 0) {
-                    final created = await authProvider.sendMessage(
-                      senderId: vendorId,
-                      receiverId: userId,
-                      messageText: 'Hi',
-                    );
+              //     // If no conversation exists, create one by sending a short initial message.
+              //     // This lets the server create the conversation entry and assign an id.
+              //     if (conversationId == 0) {
+              //       final created = await authProvider.sendMessage(
+              //         senderId: vendorId,
+              //         receiverId: userId,
+              //         messageText: 'Hi',
+              //       );
 
-                    if (!created) {
-                      if (mounted) AppMessage.show(context, authProvider.message ?? 'Could not create conversation');
-                      return;
-                    }
+              //       if (!created) {
+              //         if (mounted) AppMessage.show(context, authProvider.message ?? 'Could not create conversation');
+              //         return;
+              //       }
 
-                    // Re-fetch inbox and look for the new conversation id
-                    await authProvider.fetchInboxMessages(vendorId);
-                    for (var conversation in authProvider.inboxMessages) {
-                      final isSender = conversation.sender.id == vendorId;
-                      final otherPersonId = isSender ? conversation.receiver.id : conversation.sender.id;
-                      if (otherPersonId == userId) {
-                        conversationId = conversation.id;
-                        break;
-                      }
-                    }
-                  }
+              //       // Re-fetch inbox and look for the new conversation id
+              //       await authProvider.fetchInboxMessages(vendorId);
+              //       for (var conversation in authProvider.inboxMessages) {
+              //         final isSender = conversation.sender.id == vendorId;
+              //         final otherPersonId = isSender ? conversation.receiver.id : conversation.sender.id;
+              //         if (otherPersonId == userId) {
+              //           conversationId = conversation.id;
+              //           break;
+              //         }
+              //       }
+              //     }
 
-                  // Navigate only if widget still mounted
-                  if (!mounted) return;
+              //     // Navigate only if widget still mounted
+              //     if (!mounted) return;
 
-                  Navigator.of(context, rootNavigator: true).push(
-                    MaterialPageRoute(
-                      builder: (context) => ChatScreen(
-                        name: clientName,
-                        image: userImage,
-                        conversationId: conversationId,
-                        receiverId: userId,
-                        senderId: vendorId,
-                      ),
-                    ),
-                  );
-                },
-                child: Container(
-                  width: 60,
-                  height: 60,
-                  padding: const EdgeInsets.all(10),
-                  decoration: ShapeDecoration(
-                    color: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(1000),
-                    ),
-                  ),
-                  child: Center(
-                    child: Image.asset(
-                      'assets/icons/message-text.png',
-                      width: 20,
-                      height: 20,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: 16),
+              //     Navigator.of(context, rootNavigator: true).push(
+              //       MaterialPageRoute(
+              //         builder: (context) => ChatScreen(
+              //           name: clientName,
+              //           image: userImage,
+              //           conversationId: conversationId,
+              //           receiverId: userId,
+              //           senderId: vendorId,
+              //         ),
+              //       ),
+              //     );
+              //   },
+              //   child: Container(
+              //     width: 60,
+              //     height: 60,
+              //     padding: const EdgeInsets.all(10),
+              //     decoration: ShapeDecoration(
+              //       color: Colors.white,
+              //       shape: RoundedRectangleBorder(
+              //         borderRadius: BorderRadius.circular(1000),
+              //       ),
+              //     ),
+              //     child: Center(
+              //       child: Image.asset(
+              //         'assets/icons/message-text.png',
+              //         width: 20,
+              //         height: 20,
+              //       ),
+              //     ),
+              //   ),
+              // ),
+              // SizedBox(width: 16),
               // Action Button - Only show if not completed or cancelled
               if (status.toLowerCase() != 'completed' && status.toLowerCase() != 'cancelled' && status.toLowerCase() != 'reject')
                 Expanded(
@@ -897,19 +980,113 @@ class _BookingScreenState extends State<BookingScreen> {
                       ),
                     ),
                     SizedBox(height: 80),
-                    // Action Buttons - only show top Cancel button when booking is not finished
-                    if (status.toLowerCase() != 'completed' && status.toLowerCase() != 'cancelled' && status.toLowerCase() != 'reject') ...[
+                    // === Status-based action buttons ===
+                    // PENDING: Accept button only
+                    if (status.toLowerCase() == 'pending') ...[
                       GestureDetector(
-                        onTap: () => Navigator.pop(context),
+                        onTap: () async {
+                          final provider = context.read<AuthProvider>();
+                          Navigator.pop(context);
+
+                          final result = await provider.updateBookingStatus(
+                            bookingId: bookingId,
+                            action: "confirmed",
+                          );
+
+                          if (result) {
+                            if (mounted) ResultPopup.show(context, success: true, message: "Booking accepted");
+                            final user = await TokenStorage.getUserData();
+                            if (user?.id != null && mounted) {
+                              provider.fetchActiveBookings(user!.id!);
+                            }
+                          } else {
+                            if (mounted) ResultPopup.show(context, success: false, message: provider.message ?? "Failed");
+                          }
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                          decoration: ShapeDecoration(
+                            color: const Color(0xFF14A38B),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ColorFiltered(
+                                colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                child: Image.asset('assets/icons/tick-circle.png', width: 20, height: 20),
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Accept Booking',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontFamily: 'Onest',
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.50,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                    // ACTIVE (confirmed/in progress): Cancel + Chat + Mark Complete
+                    if (status.toLowerCase() != 'pending' &&
+                        status.toLowerCase() != 'completed' &&
+                        status.toLowerCase() != 'cancelled' &&
+                        status.toLowerCase() != 'reject') ...[
+                      // Cancel button with confirmation
+                      GestureDetector(
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: Text('Cancel Booking'),
+                              content: Text('Are you sure you want to cancel this booking?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx),
+                                  child: Text('No'),
+                                ),
+                                TextButton(
+                                  onPressed: () async {
+                                    Navigator.pop(ctx);
+                                    final provider = context.read<AuthProvider>();
+                                    Navigator.pop(context);
+
+                                    final result = await provider.updateBookingStatus(
+                                      bookingId: bookingId,
+                                      action: "reject",
+                                    );
+
+                                    if (result) {
+                                      if (mounted) ResultPopup.show(context, success: true, message: "Booking cancelled");
+                                      final user = await TokenStorage.getUserData();
+                                      if (user?.id != null && mounted) {
+                                        provider.fetchActiveBookings(user!.id!);
+                                      }
+                                    } else {
+                                      if (mounted) ResultPopup.show(context, success: false, message: provider.message ?? "Failed");
+                                    }
+                                  },
+                                  child: Text('Yes', style: TextStyle(color: Colors.red)),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
                           decoration: ShapeDecoration(
                             shape: RoundedRectangleBorder(
-                              side: BorderSide(
-                                width: 1,
-                                color: const Color(0xFFFF7171),
-                              ),
+                              side: BorderSide(width: 1, color: const Color(0xFFFF7171)),
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
@@ -928,14 +1105,11 @@ class _BookingScreenState extends State<BookingScreen> {
                         ),
                       ),
                       SizedBox(height: 16),
-                    ],
-                    // Only show buttons if status is not completed or cancelled
-                    if (status.toLowerCase() != 'completed' && status.toLowerCase() != 'cancelled' && status.toLowerCase() != 'reject') ...[
+                      // Chat + Mark Complete row
                       Row(
                         children: [
                           GestureDetector(
                             onTap: () async {
-                              // Navigate to chat screen; create conversation if missing
                               final userData = await TokenStorage.getUserData();
                               final currentVendorId = userData?.id ?? 0;
                               if (currentVendorId == 0) return;
@@ -1001,11 +1175,7 @@ class _BookingScreenState extends State<BookingScreen> {
                                 ),
                               ),
                               child: Center(
-                                child: Image.asset(
-                                  'assets/icons/message-text.png',
-                                  width: 20,
-                                  height: 20,
-                                ),
+                                child: Image.asset('assets/icons/message-text.png', width: 20, height: 20),
                               ),
                             ),
                           ),
@@ -1013,95 +1183,87 @@ class _BookingScreenState extends State<BookingScreen> {
                           Expanded(
                             child: GestureDetector(
                               onTap: () async {
-                              final provider = context.read<AuthProvider>();
-                              Navigator.pop(context);
+                                final provider = context.read<AuthProvider>();
+                                Navigator.pop(context);
 
-                              final result = await provider.updateBookingStatus(
-                                bookingId: bookingId,
-                                action: "completed",
-                              );
+                                final result = await provider.updateBookingStatus(
+                                  bookingId: bookingId,
+                                  action: "completed",
+                                );
 
-                              if (result) {
-                                // ignore: unawaited_futures
-                                AppMessage.show(context, "Booking marked as completed");
-
-                                // Refresh bookings
-                                final user = await TokenStorage.getUserData();
-                                if (user?.id != null) {
-                                  provider.fetchActiveBookings(user!.id!);
+                                if (result) {
+                                  if (mounted) ResultPopup.show(context, success: true, message: "Booking marked as completed");
+                                  final user = await TokenStorage.getUserData();
+                                  if (user?.id != null) {
+                                    provider.fetchActiveBookings(user!.id!);
+                                  }
+                                } else {
+                                  if (mounted) ResultPopup.show(context, success: false, message: provider.message ?? "Failed");
                                 }
-                              } else {
-                                // ignore: unawaited_futures
-                                AppMessage.show(context, provider.message ?? "Failed");
-                              }
-                            },
-                            child: Container(
-                              height: 48,
-                              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-                              decoration: ShapeDecoration(
-                                color: const Color(0xFF14A38B),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                              },
+                              child: Container(
+                                height: 48,
+                                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                                decoration: ShapeDecoration(
+                                  color: const Color(0xFF14A38B),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                 ),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  ColorFiltered(
-                                    colorFilter: ColorFilter.mode(
-                                      Colors.white,
-                                      BlendMode.srcIn,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    ColorFiltered(
+                                      colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                      child: Image.asset('assets/icons/tick-circle.png', width: 24, height: 24),
                                     ),
-                                    child: Image.asset(
-                                      'assets/icons/tick-circle.png',
-                                      width: 24,
-                                      height: 24,
+                                    SizedBox(width: 6),
+                                    Text(
+                                      'Mark as Complete',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontFamily: 'Onest',
+                                        fontWeight: FontWeight.w500,
+                                        height: 1.50,
+                                        letterSpacing: 0.09,
+                                      ),
                                     ),
-                                  ),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    'Mark as Complete',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontFamily: 'Onest',
-                                      fontWeight: FontWeight.w500,
-                                      height: 1.50,
-                                      letterSpacing: 0.09,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ] else ...[
-                    // Show message when booking is already completed
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.check_circle, color: Colors.green, size: 24),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              "This booking is already completed",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey.shade700,
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
+                    ],
+                    // COMPLETED/CANCELLED/REJECT: Info message
+                    if (status.toLowerCase() == 'completed' ||
+                        status.toLowerCase() == 'cancelled' ||
+                        status.toLowerCase() == 'reject') ...[
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.check_circle, color: Colors.green, size: 24),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                "This booking is already completed",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1113,8 +1275,8 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   void _showFilterBottomSheet(BuildContext context) {
-    String? selectedStatus;
-    DateTime? selectedDate;
+    String? tempSelectedStatus = _selectedStatus;
+    DateTime? tempSelectedDate = _selectedDate;
 
     showModalBottomSheet(
       context: context,
@@ -1184,17 +1346,20 @@ class _BookingScreenState extends State<BookingScreen> {
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            _buildFilterChip('All', selectedStatus == null, () {
-                              setState(() => selectedStatus = null);
+                            _buildFilterChip('All', tempSelectedStatus == null, () {
+                              setState(() => tempSelectedStatus = null);
                             }),
-                            _buildFilterChip('In Progress', selectedStatus == 'In Progress', () {
-                              setState(() => selectedStatus = 'In Progress');
+                            _buildFilterChip('In Progress', tempSelectedStatus == 'in progress', () {
+                              setState(() => tempSelectedStatus = 'in progress');
                             }),
-                            _buildFilterChip('Pending', selectedStatus == 'Pending', () {
-                              setState(() => selectedStatus = 'Pending');
+                            _buildFilterChip('Pending', tempSelectedStatus == 'pending', () {
+                              setState(() => tempSelectedStatus = 'pending');
                             }),
-                            _buildFilterChip('Completed', selectedStatus == 'Completed', () {
-                              setState(() => selectedStatus = 'Completed');
+                            _buildFilterChip('Completed', tempSelectedStatus == 'completed', () {
+                              setState(() => tempSelectedStatus = 'completed');
+                            }),
+                            _buildFilterChip('Confirmed', tempSelectedStatus == 'confirmed', () {
+                              setState(() => tempSelectedStatus = 'confirmed');
                             }),
                           ],
                         ),
@@ -1212,44 +1377,40 @@ class _BookingScreenState extends State<BookingScreen> {
                         SizedBox(height: 12),
                         GestureDetector(
                           onTap: () async {
-                            final date = await showDatePicker(
+                            final picked = await showDatePicker(
                               context: context,
-                              initialDate: selectedDate ?? DateTime.now(),
+                              initialDate: tempSelectedDate ?? DateTime.now(),
                               firstDate: DateTime(2020),
-                              lastDate: DateTime(2030),
+                              lastDate: DateTime(2099),
                             );
-                            if (date != null) {
-                              setState(() => selectedDate = date);
+                            if (picked != null) {
+                              setState(() => tempSelectedDate = picked);
                             }
                           },
                           child: Container(
-                            padding: const EdgeInsets.all(16),
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
                             decoration: ShapeDecoration(
                               color: Colors.white,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
                                 side: BorderSide(
+                                  width: 1,
                                   color: const Color(0x4CDBE2EA),
                                 ),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                             ),
                             child: Row(
                               children: [
-                                Image.asset(
-                                  'assets/icons/calendar.png',
-                                  width: 20,
-                                  height: 20,
-                                ),
-                                SizedBox(width: 12),
+                                Icon(Icons.calendar_today, color: Colors.grey, size: 18),
+                                SizedBox(width: 8),
                                 Text(
-                                  selectedDate == null
-                                      ? 'Select Date'
-                                      : '\${selectedDate!.day}/\${selectedDate!.month}/\${selectedDate!.year}',
+                                  tempSelectedDate != null
+                                      ? '${tempSelectedDate!.day}/${tempSelectedDate!.month}/${tempSelectedDate!.year}'
+                                      : 'Select Date',
                                   style: TextStyle(
-                                    color: selectedDate == null
-                                        ? const Color(0x4737383C)
-                                        : Colors.black,
-                                    fontSize: 16,
+                                    color: tempSelectedDate != null ? Colors.black : Colors.grey,
+                                    fontSize: 14,
                                     fontFamily: 'Onest',
                                     fontWeight: FontWeight.w400,
                                   ),
@@ -1259,17 +1420,17 @@ class _BookingScreenState extends State<BookingScreen> {
                           ),
                         ),
                         SizedBox(height: 24),
-                        // Apply Button
+                        // Apply and Clear Buttons
                         Row(
                           children: [
                             Expanded(
                               child: GestureDetector(
                                 onTap: () {
-                                  // Clear filters
-                                  setState(() {
-                                    selectedStatus = null;
-                                    selectedDate = null;
+                                  this.setState(() {
+                                    _selectedStatus = null;
+                                    _selectedDate = null;
                                   });
+                                  Navigator.pop(context);
                                 },
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1277,29 +1438,33 @@ class _BookingScreenState extends State<BookingScreen> {
                                     shape: RoundedRectangleBorder(
                                       side: BorderSide(
                                         width: 1,
-                                        color: const Color(0xFFFF4678),
+                                        color: const Color(0xFFFF7171),
                                       ),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                   ),
-                                  child: Text(
-                                    'Clear',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: const Color(0xFFFF4678),
-                                      fontSize: 16,
-                                      fontFamily: 'Onest',
-                                      fontWeight: FontWeight.w500,
+                                  child: Center(
+                                    child: Text(
+                                      'Clear',
+                                      style: TextStyle(
+                                        color: const Color(0xFFFF7171),
+                                        fontSize: 16,
+                                        fontFamily: 'Onest',
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                            SizedBox(width: 16),
+                            SizedBox(width: 12),
                             Expanded(
                               child: GestureDetector(
                                 onTap: () {
-                                  // Apply filters (implement filter logic here)
+                                  this.setState(() {
+                                    _selectedStatus = tempSelectedStatus;
+                                    _selectedDate = tempSelectedDate;
+                                  });
                                   Navigator.pop(context);
                                 },
                                 child: Container(
@@ -1310,14 +1475,15 @@ class _BookingScreenState extends State<BookingScreen> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                   ),
-                                  child: Text(
-                                    'Apply',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontFamily: 'Onest',
-                                      fontWeight: FontWeight.w500,
+                                  child: Center(
+                                    child: Text(
+                                      'Apply',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontFamily: 'Onest',
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1342,13 +1508,13 @@ class _BookingScreenState extends State<BookingScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: ShapeDecoration(
-          color: isSelected ? const Color(0xFFFF4678) : Colors.white,
+          color: isSelected ? const Color(0xFF14A38B) : Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: BorderSide(
-              color: isSelected ? const Color(0xFFFF4678) : const Color(0x4CDBE2EA),
+              color: isSelected ? const Color(0xFF14A38B) : const Color(0x4CDBE2EA),
             ),
           ),
         ),
@@ -1576,7 +1742,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
                     if (result) {
                       // ignore: unawaited_futures
-                      AppMessage.show(context, "Booking cancelled");
+                      ResultPopup.show(context, success: true, message: "Booking cancelled");
 
                       // Refresh bookings
                       final user = await TokenStorage.getUserData();
@@ -1585,7 +1751,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       }
                     } else {
                       // ignore: unawaited_futures
-                      AppMessage.show(context, provider.message ?? "Failed");
+                      ResultPopup.show(context, success: false, message: provider.message ?? "Failed");
                     }
                   },
                   style: OutlinedButton.styleFrom(
@@ -1615,7 +1781,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
                     if (result) {
                       // ignore: unawaited_futures
-                      AppMessage.show(context, "Booking marked as completed");
+                      ResultPopup.show(context, success: true, message: "Booking marked as completed");
 
                       // Refresh bookings
                       final user = await TokenStorage.getUserData();
@@ -1624,7 +1790,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       }
                     } else {
                       // ignore: unawaited_futures
-                      AppMessage.show(context, provider.message ?? "Failed");
+                      ResultPopup.show(context, success: false, message: provider.message ?? "Failed");
                     }
                   },
 
@@ -1661,7 +1827,8 @@ class _BookingScreenState extends State<BookingScreen> {
                   ],
                 ),
               ),
-              ] else ...[
+              ],
+              if (status.toLowerCase() == 'completed' || status.toLowerCase() == 'cancelled' || status.toLowerCase() == 'reject') ...[
                 // Show message when booking is already completed
                 Container(
                   padding: const EdgeInsets.all(16),

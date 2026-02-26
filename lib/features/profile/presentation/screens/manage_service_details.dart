@@ -11,10 +11,10 @@ import 'package:vendor_app/core/services/address_service.dart';
 import 'package:vendor_app/core/services/lat_lng_service.dart';
 import 'package:vendor_app/core/utils/app_icons.dart';
 import 'package:vendor_app/core/utils/app_theme.dart';
-import 'package:vendor_app/features/authentication/data/models/resposne/category_model_response.dart';
 import 'package:vendor_app/features/authentication/data/models/resposne/subcategory_model_response.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/service_meta_field_response.dart';
 import 'package:vendor_app/core/utils/app_message.dart';
+import 'package:vendor_app/core/utils/result_popup.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
 import 'package:vendor_app/features/profile/data/models/request/service_add_request.dart';
 import 'package:vendor_app/features/profile/data/models/request/venue_create_request.dart';
@@ -40,7 +40,7 @@ class ManageServiceDetailsScreen extends StatefulWidget {
 class _ManageServiceDetailsScreenState
     extends State<ManageServiceDetailsScreen> {
   String get _normalizedType => (widget.type).trim().toLowerCase();
-  bool get isVenue => _normalizedType == 'venue';
+  bool _isVenue = false;
 
   // Image carousel
   List<String> _imagePaths = [];
@@ -80,20 +80,80 @@ class _ManageServiceDetailsScreenState
   @override
   void initState() {
     super.initState();
-    _initializeData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeData();
+    });
   }
 
   Future<void> _initializeData() async {
     await Future.wait([
       _loadAmenities(),
       _loadStates(),
-      _loadCategories(),
       _prefillLocationFromGPS(),
     ]);
+    // After parallel loads, resolve category from the vendor's subcategory ID
+    await _resolveCategory();
   }
 
-  Future<void> _loadCategories() async {
-    await context.read<AuthProvider>().fetchCategories();
+  /// Determine the parent category from `widget.subCategoryId`.
+  /// Categories and subcategories are fetched from separate APIs.
+  /// The vendor profile stores a subcategory ID in `business_category`,
+  /// so we iterate through categories and fetch their subcategories to
+  /// find which one contains the vendor's subcategory.
+  Future<void> _resolveCategory() async {
+    final prov = context.read<AuthProvider>();
+    await prov.fetchCategories();
+    final cats = prov.categories;
+    if (cats.isEmpty) return;
+
+    // If we have a subcategory ID from the vendor profile, find its parent category
+    if (widget.subCategoryId > 0) {
+      for (final cat in cats) {
+        await prov.fetchSubcategories(cat.id);
+        final subs = prov.subcategories;
+        final match = subs.where((s) => s.id == widget.subCategoryId).firstOrNull;
+        if (match != null) {
+          if (!mounted) return;
+          setState(() {
+            _selectedCategoryId = cat.id;
+            _selectedCategoryName = cat.name;
+            categoryController.text = cat.name;
+            _isVenue = cat.name.trim().toLowerCase() == 'venue';
+          });
+          // Subcategories are already fetched for this category
+          return;
+        }
+      }
+    }
+
+    // Fallback: try to infer from widget.type
+    if (_normalizedType.isNotEmpty) {
+      for (final cat in cats) {
+        if (cat.name.trim().toLowerCase() == _normalizedType ||
+            cat.slug.trim().toLowerCase() == _normalizedType) {
+          if (!mounted) return;
+          setState(() {
+            _selectedCategoryId = cat.id;
+            _selectedCategoryName = cat.name;
+            categoryController.text = cat.name;
+            _isVenue = cat.name.trim().toLowerCase() == 'venue';
+          });
+          await prov.fetchSubcategories(cat.id);
+          return;
+        }
+      }
+    }
+
+    // Final fallback: use first category
+    if (!mounted) return;
+    final first = cats.first;
+    setState(() {
+      _selectedCategoryId = first.id;
+      _selectedCategoryName = first.name;
+      categoryController.text = first.name;
+      _isVenue = first.name.trim().toLowerCase() == 'venue';
+    });
+    await prov.fetchSubcategories(first.id);
   }
 
   Future<void> _loadAmenities() async {
@@ -193,6 +253,11 @@ class _ManageServiceDetailsScreenState
       return;
     }
 
+    if (_imagePaths.isEmpty) {
+      _showMsg('Please upload at least one image');
+      return;
+    }
+
     if (priceController.text.trim().isEmpty) {
       _showMsg('Please enter price');
       return;
@@ -220,7 +285,7 @@ class _ManageServiceDetailsScreenState
         }
       }
 
-      if (isVenue) {
+      if (_isVenue) {
         // Create venue request
         final minBooking = int.tryParse(minCapacityController.text.trim()) ?? 0;
         final maxCapacity = int.tryParse(maxCapacityController.text.trim()) ?? 0;
@@ -271,20 +336,10 @@ class _ManageServiceDetailsScreenState
         );
         
         final ok = await context.read<AuthProvider>().createVenue(request);
-        final vmsg = context.read<AuthProvider>().message ?? (ok ? 'Venue created' : 'Failed');
-        await showDialog<void>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text(ok ? 'Success' : 'Error'),
-            content: Text(vmsg),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
+        final vmsg = context.read<AuthProvider>().message ?? (ok ? 'Venue created successfully' : 'Failed to create venue');
+        if (mounted) {
+          await ResultPopup.show(context, success: ok, message: vmsg);
+        }
         if (ok && mounted) Navigator.pop(context);
       } else {
         // Create service request
@@ -315,20 +370,10 @@ class _ManageServiceDetailsScreenState
         );
         
         final ok = await context.read<AuthProvider>().createService(request);
-        final msg = context.read<AuthProvider>().message ?? (ok ? 'Service added' : 'Failed');
-        await showDialog<void>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text(ok ? 'Success' : 'Error'),
-            content: Text(msg),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
+        final msg = context.read<AuthProvider>().message ?? (ok ? 'Service added successfully' : 'Failed to add service');
+        if (mounted) {
+          await ResultPopup.show(context, success: ok, message: msg);
+        }
         if (ok && mounted) Navigator.pop(context);
       }
     } catch (e) {
@@ -397,32 +442,40 @@ class _ManageServiceDetailsScreenState
                         businessNameController,
                       ),
                       const SizedBox(height: 16),
-                      // Category
-                      _buildDropdownField(
-                        'Category',
-                        _selectedCategoryName ?? 'Select Category',
-                        onTap: () async {
-                          final picked = await _showCategoryPicker(context);
-                          if (picked != null) {
-                            setState(() {
-                              _selectedCategoryId = picked.id;
-                              _selectedCategoryName = picked.name;
-                              _selectedSubcategoryId = null;
-                              _selectedSubcategoryName = null;
-                              categoryController.text = picked.name;
-                            });
-                            await context.read<AuthProvider>().fetchSubcategories(picked.id);
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 16),
+                      // Category is auto-selected from profile - show as read-only info
+                      if (_selectedCategoryName != null) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF5F5F5),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFDBE2EA)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.category_outlined, color: Color(0xFFFF4678), size: 20),
+                              const SizedBox(width: 10),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Category', style: TextStyle(color: Color(0xFF746E85), fontSize: 12, fontFamily: 'Onest', fontWeight: FontWeight.w400)),
+                                  const SizedBox(height: 2),
+                                  Text(_selectedCategoryName!, style: TextStyle(color: Colors.black, fontSize: 15, fontFamily: 'Onest', fontWeight: FontWeight.w500)),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                       // Subcategory
                       _buildDropdownField(
                         'Subcategory',
                         _selectedSubcategoryName ?? 'Select Subcategory',
                         onTap: () async {
                           if (_selectedCategoryId == null) {
-                            _showMsg('Please select a category first');
+                            _showMsg('Category not loaded yet. Please wait.');
                             return;
                           }
                           final picked = await _showSubcategoryPicker(context);
@@ -489,7 +542,7 @@ class _ManageServiceDetailsScreenState
                       ),
                       const SizedBox(height: 16),
                       // Booking Capacity (for venues)
-                      if (isVenue) ...[
+                      if (_isVenue) ...[
                         const Text(
                           'Booking Capacity',
                           style: TextStyle(
@@ -591,7 +644,7 @@ class _ManageServiceDetailsScreenState
                       ),
                       const SizedBox(height: 16),
                       // Amenities (for venues)
-                      if (isVenue) ...[
+                      if (_isVenue) ...[
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -960,49 +1013,6 @@ class _ManageServiceDetailsScreenState
     );
   }
 
-  Future<CategoryModelResponse?> _showCategoryPicker(BuildContext context) async {
-    final prov = context.read<AuthProvider>();
-    if (prov.categories.isEmpty) {
-      _showMsg('No categories available');
-      return null;
-    }
-
-    return await showModalBottomSheet<CategoryModelResponse>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Select Category',
-                style: AppTheme.heading5.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: prov.categories.length,
-                  itemBuilder: (context, index) {
-                    final cat = prov.categories[index];
-                    return ListTile(
-                      title: Text(cat.name, style: AppTheme.bodyRegular),
-                      onTap: () => Navigator.pop(context, cat),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   Future<SubcategoryModelResponse?> _showSubcategoryPicker(BuildContext context) async {
     final prov = context.read<AuthProvider>();
     if (prov.subcategories.isEmpty) {
@@ -1139,22 +1149,39 @@ class _ManageServiceDetailsScreenState
       final key = '${f.id}'; // use field id as the map key (string)
       switch (f.type) {
         case 'toggle':
-          return SwitchListTile(
-            title: Text(f.label, style: AppTheme.bodyLarge.copyWith(color: const Color(0xFF746E85))),
-            value: (_metaValues[key] as bool?) ?? false,
-            activeThumbColor: const Color(0xFFFF4678),
-            trackColor: MaterialStateProperty.resolveWith((states) =>
-                states.contains(MaterialState.selected)
-                    ? const Color(0xFFFFA3B1)
-                    : null),
-            onChanged: (v) => setState(() => _metaValues[key] = v),
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFDBE2EA)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(f.label, style: AppTheme.bodyLarge.copyWith(color: const Color(0xFF746E85), fontSize: 15)),
+                  ),
+                  Switch(
+                    value: (_metaValues[key] as bool?) ?? false,
+                    activeColor: Colors.white,
+                    activeTrackColor: const Color(0xFFFF4678),
+                    inactiveThumbColor: Colors.white,
+                    inactiveTrackColor: const Color(0xFFE0E0E0),
+                    trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+                    onChanged: (v) => setState(() => _metaValues[key] = v),
+                  ),
+                ],
+              ),
+            ),
           );
 
         case 'select':
           final current = _metaValues[key] as String?;
           final opts = f.options ?? [];
           if (opts.isEmpty) {
-            // fallback to plain text input if no options provided
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1164,15 +1191,25 @@ class _ManageServiceDetailsScreenState
                   initialValue: current,
                   decoration: InputDecoration(
                     hintText: f.label,
+                    hintStyle: AppTheme.hintText.copyWith(fontSize: 16),
                     filled: true,
                     fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: Color(0xFFDBE2EA)),
                     ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFFDBE2EA)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(width: 2, color: Color(0xFFFF4678)),
+                    ),
                   ),
                   onChanged: (v) => _metaValues[key] = v,
-                  style: AppTheme.inputText,
+                  style: AppTheme.inputText.copyWith(fontSize: 16),
                 ),
                 const SizedBox(height: 12),
               ],
@@ -1185,12 +1222,17 @@ class _ManageServiceDetailsScreenState
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFDBE2EA))),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFDBE2EA)),
+                ),
                 child: DropdownButton<String>(
                   isExpanded: true,
                   value: current,
-                  hint: Text('Select ${f.label}', style: AppTheme.hintText),
+                  hint: Text('Select ${f.label}', style: AppTheme.hintText.copyWith(fontSize: 16)),
                   underline: const SizedBox.shrink(),
+                  icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFFFF4678)),
                   items: opts.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
                   onChanged: (v) => setState(() => _metaValues[key] = v),
                 ),
@@ -1206,18 +1248,56 @@ class _ManageServiceDetailsScreenState
             children: [
               Text(f.label, style: AppTheme.bodyLarge.copyWith(color: const Color(0xFF746E85))),
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: selected.map((s) => Chip(label: Text(s))).toList(),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton(
-                onPressed: () async {
+              GestureDetector(
+                onTap: () async {
                   final res = await _showMultiSelectDialog(f);
                   if (res != null) setState(() => _metaValues[key] = res);
                 },
-                child: const Text('Select'),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFDBE2EA)),
+                  ),
+                  child: selected.isEmpty
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Select ${f.label}', style: AppTheme.hintText.copyWith(fontSize: 16)),
+                            const Icon(Icons.keyboard_arrow_down, color: Color(0xFFFF4678)),
+                          ],
+                        )
+                      : Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: selected.map((s) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF4678).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFFF4678).withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(s, style: const TextStyle(color: Color(0xFFFF4678), fontSize: 13, fontFamily: 'Onest', fontWeight: FontWeight.w500)),
+                                const SizedBox(width: 4),
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      selected.remove(s);
+                                      _metaValues[key] = List<String>.from(selected);
+                                    });
+                                  },
+                                  child: const Icon(Icons.close, size: 14, color: Color(0xFFFF4678)),
+                                ),
+                              ],
+                            ),
+                          )).toList(),
+                        ),
+                ),
               ),
               const SizedBox(height: 12),
             ],
@@ -1232,9 +1312,27 @@ class _ManageServiceDetailsScreenState
               TextFormField(
                 initialValue: _metaValues[key]?.toString(),
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(hintText: f.label, filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFDBE2EA)))),
+                decoration: InputDecoration(
+                  hintText: f.label,
+                  hintStyle: AppTheme.hintText.copyWith(fontSize: 16),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFDBE2EA)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFDBE2EA)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(width: 2, color: Color(0xFFFF4678)),
+                  ),
+                ),
                 onChanged: (v) => _metaValues[key] = num.tryParse(v) ?? v,
-                style: AppTheme.inputText,
+                style: AppTheme.inputText.copyWith(fontSize: 16),
               ),
               const SizedBox(height: 12),
             ],
@@ -1248,9 +1346,27 @@ class _ManageServiceDetailsScreenState
               const SizedBox(height: 8),
               TextFormField(
                 initialValue: _metaValues[key]?.toString(),
-                decoration: InputDecoration(hintText: f.label, filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFDBE2EA)))),
+                decoration: InputDecoration(
+                  hintText: f.label,
+                  hintStyle: AppTheme.hintText.copyWith(fontSize: 16),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFDBE2EA)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFDBE2EA)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(width: 2, color: Color(0xFFFF4678)),
+                  ),
+                ),
                 onChanged: (v) => _metaValues[key] = v,
-                style: AppTheme.inputText,
+                style: AppTheme.inputText.copyWith(fontSize: 16),
               ),
               const SizedBox(height: 12),
             ],

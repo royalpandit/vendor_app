@@ -4,6 +4,7 @@ import 'package:vendor_app/core/config/app_config.dart';
 import 'package:vendor_app/core/network/api_exceptions.dart';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import 'package:vendor_app/core/network/token_storage.dart';
 import 'package:vendor_app/core/session/session.dart';
 
 
@@ -33,7 +34,14 @@ Dio buildDio({bool enableLogs = true}) {
         // Attach token (safe)
         try {
          // final token = await TokenStorage.getToken();
-  final token = Session.token;
+  String? token = Session.token;
+          // Fallback: re-read from persistent storage if in-memory token is gone
+          if (token == null || token.isEmpty) {
+            token = await TokenStorage.getToken();
+            if (token != null && token.isNotEmpty) {
+              Session.token = token; // re-cache in memory
+            }
+          }
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
           }

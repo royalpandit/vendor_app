@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:vendor_app/core/network/token_storage.dart';
@@ -22,10 +23,23 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  String? _cachedVendorName;
+  Timer? _refreshTimer;
+
   @override
   void initState() {
     super.initState();
     _fetchDashboardData();
+    // Refresh dashboard data every 10 seconds
+    _refreshTimer = Timer.periodic(Duration(seconds: 10), (_) {
+      _fetchDashboardData();
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchDashboardData() async {
@@ -35,7 +49,17 @@ class _HomeScreenState extends State<HomeScreen> {
     final userId = userData?.id ?? 0;
     final authProvider = context.read<AuthProvider>();
     authProvider.fetchVendorDashboard(userId);
-    authProvider.fetchVendorDetails(userId);
+    // Only fetch vendor details if not already cached
+    if (authProvider.vendorDetails == null) {
+      await authProvider.fetchVendorDetails(userId);
+    }
+    // Use vendor name from API (the actual business name), not the OTP user name
+    final vendorName = authProvider.vendorDetails?.name;
+    if (vendorName != null && vendorName.isNotEmpty) {
+      if (mounted) setState(() => _cachedVendorName = vendorName);
+    } else if (_cachedVendorName == null && userData != null && userData.name.isNotEmpty) {
+      if (mounted) setState(() => _cachedVendorName = userData.name);
+    }
   }
 
   @override
@@ -71,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                         // Welcome Section (match booking screen sizes)
                         Text(
-                          'Welcome Back, ${authProvider.vendorDetails?.name ?? 'Vendor'}',
+                          'Welcome Back, ${_cachedVendorName ?? authProvider.vendorDetails?.name ?? 'Vendor'}',
                           style: TextStyle(
                             color: const Color(0xFF171719),
                             fontSize: 26,
@@ -533,6 +557,88 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     return GestureDetector(
       onTap: () async {
+        // Show confirmation popup for Decline
+        if (action == 'reject') {
+          final confirmed = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              backgroundColor: Colors.white,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF4678).withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.warning_rounded, color: Color(0xFFFF4678), size: 32),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Decline Order?',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontFamily: 'Onest',
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Are you sure you want to decline this order?',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontFamily: 'Onest',
+                        fontWeight: FontWeight.w400,
+                        color: Color(0xFF5C5C5C),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.black,
+                              side: const BorderSide(color: Color(0xFFDBE2EA)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            child: const Text('No', style: TextStyle(fontFamily: 'Onest', fontWeight: FontWeight.w500)),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFF4678),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            child: const Text('Yes', style: TextStyle(fontFamily: 'Onest', fontWeight: FontWeight.w500)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+          if (confirmed != true) return;
+        }
+
         final provider = context.read<AuthProvider>();
 
         final success = await provider.updateBookingStatus(

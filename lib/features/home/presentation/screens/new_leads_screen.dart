@@ -12,24 +12,28 @@ class NewLeadsScreen extends StatefulWidget {
 }
 
 class _NewLeadsScreenState extends State<NewLeadsScreen> {
+  late TextEditingController _searchController;
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
+    _searchController = TextEditingController();
     fetchNewLeads();
-
   }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> fetchNewLeads() async {
-    // Fetch user data from SharedPreferences
-
+    // Always refresh from server (no caching)
     final userData = await TokenStorage.getUserData();
-
     final userId = userData?.id ?? 0;
-    final authProvider = context.read<AuthProvider>(); // Access auth provider
-
-    // Fetch the booking leads if they are not already fetched
-    if (authProvider.bookingLeads.isEmpty) {
-      authProvider.fetchBookingLeads(userId);
-    }
+    final authProvider = context.read<AuthProvider>();
+    authProvider.fetchBookingLeads(userId);
   }
 
 
@@ -136,6 +140,8 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
                                 SizedBox(width: 4),
                                 Expanded(
                                   child: TextField(
+                                    controller: _searchController,
+                                    onChanged: (v) => setState(() => _searchQuery = v.trim().toLowerCase()),
                                     decoration: InputDecoration(
                                       hintText: 'Search for leads',
                                       hintStyle: TextStyle(
@@ -181,30 +187,43 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
                           Expanded(
                             child: authProvider.loading
                                 ? Center(child: CircularProgressIndicator())
-                                : authProvider.bookingLeads.isEmpty
-                                    ? Center(
+                                : () {
+                                    final allLeads = authProvider.bookingLeads;
+                                    final filtered = _searchQuery.isEmpty
+                                        ? allLeads
+                                        : allLeads.where((lead) {
+                                            final name = lead.user.name.toLowerCase();
+                                            final service = lead.serviceName.toLowerCase();
+                                            return name.contains(_searchQuery) || service.contains(_searchQuery);
+                                          }).toList();
+
+                                    if (filtered.isEmpty) {
+                                      return Center(
                                         child: Text(
                                           'No leads available.',
                                           style: TextStyle(fontFamily: 'Onest'),
                                         ),
-                                      )
-                                    : ListView.builder(
-                                        itemCount: authProvider.bookingLeads.length,
-                                        itemBuilder: (context, index) {
-                                          final lead = authProvider.bookingLeads[index];
-                                          return Padding(
-                                            padding: const EdgeInsets.only(bottom: 12),
-                                            child: _buildLeadCard(
-                                              bookingId: lead.id,
-                                              name: lead.user.name,
-                                              email: lead.user.email ?? 'No email',
-                                              budget: lead.budget,
-                                              date: lead.eventDate,
-                                              location: lead.address,
-                                            ),
-                                          );
-                                        },
-                                      ),
+                                      );
+                                    }
+
+                                    return ListView.builder(
+                                      itemCount: filtered.length,
+                                      itemBuilder: (context, index) {
+                                        final lead = filtered[index];
+                                        return Padding(
+                                          padding: const EdgeInsets.only(bottom: 12),
+                                          child: _buildLeadCard(
+                                            bookingId: lead.id,
+                                            name: lead.user.name,
+                                            email: lead.user.email ?? 'No email',
+                                            budget: lead.budget,
+                                            date: lead.eventDate,
+                                            location: lead.address,
+                                          ),
+                                        );
+                                      },
+                                    );
+                                  }(),
                           ),
                         ],
                       ),
@@ -424,6 +443,88 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
   }) {
     return GestureDetector(
       onTap: () async {
+        // Show confirmation popup for Decline
+        if (action == 'reject') {
+          final confirmed = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              backgroundColor: Colors.white,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF4678).withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.warning_rounded, color: Color(0xFFFF4678), size: 32),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Decline Order?',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontFamily: 'Onest',
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Are you sure you want to decline this order?',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontFamily: 'Onest',
+                        fontWeight: FontWeight.w400,
+                        color: Color(0xFF5C5C5C),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.black,
+                              side: const BorderSide(color: Color(0xFFDBE2EA)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            child: const Text('No', style: TextStyle(fontFamily: 'Onest', fontWeight: FontWeight.w500)),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFF4678),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            child: const Text('Yes', style: TextStyle(fontFamily: 'Onest', fontWeight: FontWeight.w500)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+          if (confirmed != true) return;
+        }
+
         final provider = context.read<AuthProvider>();
 
         final success = await provider.updateBookingStatus(

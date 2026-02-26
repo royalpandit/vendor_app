@@ -120,19 +120,14 @@ class AuthProvider extends ChangeNotifier {
         final t = v?.token ?? '';
         verifyType = v?.verifyType;
         Session.token = t;
-        if (t.isNotEmpty) {
-          await TokenStorage.saveTokenAndUserData(
-            token: t, // Save the token
-            user: v!.user, // Save the user data
-          );
-          //   await TokenStorage.saveToken(t);      // prefs-only
-          isLoggedIn = true;
-        } else {
-          isLoggedIn = false;
+        // store in the transient TokenStorage (in‑memory only)
+        if (t.isNotEmpty && v?.user != null) {
+          await TokenStorage.saveTokenAndUserData(token: t, user: v!.user);
         }
+        isLoggedIn = t.isNotEmpty;
         message = res.data.message ?? 'Login success';
         notifyListeners();
-        return isLoggedIn; // <-- MUST return true if token exists
+        return isLoggedIn; 
 
       case ApiFailure():
         message = res.message;
@@ -142,9 +137,44 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Clear everything stored by this provider.  Use when logging out or
+  /// when you want to drop cached API results.
+  void clearCache() {
+    verifyType = null;
+    loading = false;
+    message = null;
+    devOtp = null;
+    isLoggedIn = false;
+    success = false;
+    progress = 0.0;
+    last = null;
+    categories = [];
+    bookingLeads = [];
+    activeBookingsModels = [];
+    userPortfolio = [];
+    notificationSettings = null;
+    inboxMessages = [];
+    subcategories = [];
+    conversationMessages = [];
+    amenities = [];
+    serviceMetaFields = [];
+    dashboardData = null;
+    vendorDetails = null;
+    createdService = null;
+    createdVenue = null;
+    cities = [];
+    states = [];
+    contactSupport = [];
+    faqs = [];
+    serviceDetails = null;
+    bookingInvoice = null;
+    notifyListeners();
+  }
+
   Future<void> fetchCategories() async {
     loading = true;
     message = null;
+    categories = []; // don't keep old data
     notifyListeners();
     final res = await _repo.getCategories();
     loading = false;
@@ -162,6 +192,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> fetchSubcategories(int categoryId) async {
     loading = true;
     message = null;
+    subcategories = [];
     notifyListeners();
     final res = await _repo.getSubcategories(categoryId);
     loading = false;
@@ -240,6 +271,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> fetchVendorDashboard(int userId) async {
     loading = true;
     message = null; // Clear any previous messages
+    dashboardData = null; // drop previous results (no cache)
     notifyListeners();
 
     try {
@@ -254,10 +286,12 @@ class AuthProvider extends ChangeNotifier {
           dashboardData = res.data!.data; // Access the 'data' from the response
           message = res.data!.message ?? 'Dashboard fetched successfully';
         } else {
+          dashboardData = null;
           message = 'No data available for the dashboard';
         }
       } else if (res is ApiFailure<BaseResponse<DashboardResponse>>) {
         // Handle failure response
+        dashboardData = null;
         message =
             res.message ??
             'Failed to fetch dashboard data'; // Access the message
@@ -273,6 +307,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> fetchBookingLeads(int userId) async {
     loading = true;
     message = null;
+    bookingLeads = [];
     notifyListeners();
 
     try {
@@ -303,6 +338,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> fetchActiveBookings(int userId) async {
     loading = true;
     message = null;
+    activeBookingsModels = [];
     notifyListeners();
     try {
       final res = await _repo.getActiveBookings(userId);
@@ -337,6 +373,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> uploadUserPortfolio(UserPortfolioRequest request) async {
     loading = true;
     message = null;
+    // no existing portfolio retained between calls
     notifyListeners();
 
     try {
@@ -405,6 +442,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> fetchNotificationSettings(int userId) async {
     loading = true;
     message = null;
+    notificationSettings = null;
     notifyListeners();
 
     try {
@@ -430,6 +468,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> fetchInboxMessages(int userId) async {
     loading = true;
     message = null;
+    inboxMessages = [];
     notifyListeners();
 
     try {
@@ -461,6 +500,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> fetchConversationMessages(int conversationId) async {
     loading = true;
     message = null;
+    conversationMessages = [];
     notifyListeners();
 
     final res = await _repo.getConversationMessages(conversationId);
@@ -482,6 +522,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> fetchVendorDetails(int vendorId) async {
     loading = true;
     message = null;
+    vendorDetails = null; // drop any previous details
     notifyListeners();
 
 
@@ -550,6 +591,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> fetchAmenities() async {
     loading = true;
     message = null;
+    amenities = [];
     notifyListeners();
 
     final res = await _repo.getAmenities();
@@ -569,6 +611,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> fetchServiceMetaFields(int subcategoryId) async {
     loading = true;
     message = null;
+    serviceMetaFields = [];
     notifyListeners();
 
     final res = await _repo.getServiceMetaFields(subcategoryId);
@@ -587,10 +630,10 @@ class AuthProvider extends ChangeNotifier {
 
   // ---------- LOAD STATES ----------
   Future<bool> loadStates({bool force = false}) async {
-    if (states.isNotEmpty && !force) return true;
-
+    // always re-fetch states; do not reuse previously loaded list
     loading = true;
     message = null;
+    states = [];
     notifyListeners();
 
     final res = await _repo.fetchStates();
