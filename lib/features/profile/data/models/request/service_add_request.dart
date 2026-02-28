@@ -4,15 +4,29 @@ class ServiceAddRequest {
   final String name;
   final String description;
   final num basePrice;
-  final String priceType; // e.g. "day"
+  final String priceType;
   final String location;
   final String city;
   final String state;
-  final int status; // 1/0
-  final int verify; // 0/1
+
+  final bool status;
+  final bool verify;
+
   final String latitude;
   final String longitude;
-  final String image; // server path like "uploads/services/wedding_photo_1.jpg"
+
+  final String profileImage;
+  final List<String> galleryImages;
+
+  final String ownerName;
+  final int experienceYears;
+
+  final String contactNumber;
+  final String whatsappNumber;
+  final String email;
+  final String serviceAreas;
+  final String gstNumber;
+
   final Map<String, dynamic>? meta;
 
   ServiceAddRequest({
@@ -29,25 +43,43 @@ class ServiceAddRequest {
     required this.verify,
     required this.latitude,
     required this.longitude,
-    required this.image,
+    required this.profileImage,
+    required this.galleryImages,
+    required this.ownerName,
+    required this.experienceYears,
+    required this.contactNumber,
+    required this.whatsappNumber,
+    required this.email,
+    required this.serviceAreas,
+    required this.gstNumber,
     this.meta,
   });
 
-  Map<String, dynamic> toJson() => {
-    "vendor_id": vendorId,
-    "sub_category_id": subCategoryId,
-    "name": name,
-    "description": description,
-    "base_price": basePrice,
-    "price_type": priceType,
-    "location": location,
-    "city": city,
-    "state": state,
-    "status": status,
-    "verify": verify,
-    "latitude": latitude,
-    "longitude": longitude,
-    "image": image,
-    if (meta != null) "meta": meta,
-  };
+  Map<String, dynamic> toJson() {
+    return {
+      "vendor_id": vendorId,
+      "sub_category_id": subCategoryId,
+      "name": name,
+      "description": description,
+      "base_price": basePrice,
+      "price_type": priceType,
+      "location": location,
+      "city": city,
+      "state": state,
+      "status": status,
+      "verify": verify,
+      "latitude": latitude,
+      "longitude": longitude,
+      "profile_image": profileImage,
+      "gallery_images": galleryImages,
+      "owner_name": ownerName,
+      "experience_years": experienceYears,
+      "contact_number": contactNumber,
+      "whatsapp_number": whatsappNumber,
+      "email": email,
+      "service_areas": serviceAreas,
+      "gst_number": gstNumber,
+      if (meta != null) "meta": meta,
+    };
+  }
 }

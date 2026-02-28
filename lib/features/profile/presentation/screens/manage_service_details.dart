@@ -275,13 +275,58 @@ class _ManageServiceDetailsScreenState
       final vendorId = user.id ?? 0;
 
       // Upload first image (business cover)
+
+
+      // String? uploadedPath;
+      // if (_imagePaths.isNotEmpty) {
+      //
+      //   final folder = _isVenue ? 'venues' : 'services';
+      //   print("IMAGE PATH => ${_imagePaths.first}");
+      //   print("UPLOAD FOLDER => $folder");
+      //   final resp = await context
+      //       .read<AuthProvider>()
+      //       .upload(_imagePaths.first, folder);
+      //   print("UPLOAD RESPONSE => $resp");
+      //   if (resp != null && resp.success && resp.path.trim().isNotEmpty) {
+      //     uploadedPath = resp.path;
+      //   }
+      //
+      // }
+
+      List<String> uploadedImages = [];
       String? uploadedPath;
-      if (_imagePaths.isNotEmpty) {
+
+      final folder = _isVenue ? 'venues' : 'services';
+
+      if (_isVenue) {
+
+        // venue = single image
         final resp = await context
             .read<AuthProvider>()
-            .upload(_imagePaths.first, 'business_photos');
+            .upload(_imagePaths.first, folder);
+
+        print("UPLOAD RESPONSE => $resp");
+
         if (resp != null && resp.success && resp.path.trim().isNotEmpty) {
           uploadedPath = resp.path;
+        }
+
+      } else {
+
+        // service = multiple images
+        for (String path in _imagePaths) {
+
+          print("IMAGE PATH => $path");
+
+          final resp = await context
+              .read<AuthProvider>()
+              .upload(path, folder);
+
+          print("UPLOAD RESPONSE => $resp");
+
+          if (resp != null && resp.success && resp.path.trim().isNotEmpty) {
+            uploadedImages.add(resp.path);
+          }
         }
       }
 
@@ -350,22 +395,37 @@ class _ManageServiceDetailsScreenState
           _showMsg('Please select a subcategory');
           return;
         }
-        
+
         final request = ServiceAddRequest(
           vendorId: vendorId,
           subCategoryId: _selectedSubcategoryId!,
           name: businessNameController.text.trim(),
           description: descriptionController.text.trim(),
           basePrice: priceNum,
-          priceType: 'day',
+          priceType: "event",
+
           location: addressController.text.trim(),
           city: cityController.text.trim(),
           state: stateController.text.trim(),
-          status: 1,
-          verify: 0,
+
+          status: true,
+          verify: false,
+
           latitude: latitudeController.text.trim(),
           longitude: longitudeController.text.trim(),
-          image: uploadedPath ?? '',
+
+          profileImage: uploadedImages.isNotEmpty ? uploadedImages.first : "",
+          galleryImages: uploadedImages,
+
+          ownerName: businessNameController.text.trim(),
+          experienceYears: 0,
+
+          contactNumber: "",
+          whatsappNumber: "",
+          email: "",
+          serviceAreas: "",
+          gstNumber: "",
+
           meta: _metaValues.isNotEmpty ? Map<String, dynamic>.from(_metaValues) : null,
         );
         

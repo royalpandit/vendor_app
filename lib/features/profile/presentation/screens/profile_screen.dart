@@ -63,24 +63,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+
   Future<void> _fetchUserPortfolio() async {
     final user = await TokenStorage.getUserData();
     if (user == null) {
       _showMsg('User not found');
       return;
     }
+
     final int userId = user.id ?? 0;
     final prov = context.read<AuthProvider>();
-    if (prov.userPortfolio.isNotEmpty) {
-      final response = prov.userPortfolio;
-      setState(() {
-        portfolioImages = response.map((p) => p.fullUrl).toList();
-      });
-      return;
-    }
 
     await prov.getUserPortfolio(userId);
+
     final response = prov.userPortfolio;
+
     setState(() {
       portfolioImages = response.map((p) => p.fullUrl).toList();
     });
@@ -352,9 +349,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _pickAndUpload(
                 folder: 'user_portfolio',
                 onUploaded: (path) async {
-                  setState(() => portfolioImages.add(path));
                   await _uploadUserPortfolio(path);
+                  await _fetchUserPortfolio();
                 },
+                // onUploaded: (path) async {
+                //   setState(() => portfolioImages.add(path));
+                //   await _uploadUserPortfolio(path);
+                // },
               );
             },
             child: Container(
@@ -405,9 +406,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _pickAndUpload(
                     folder: 'user_portfolio',
                     onUploaded: (path) async {
-                      setState(() => portfolioImages.add(path));
                       await _uploadUserPortfolio(path);
+                      await _fetchUserPortfolio();
                     },
+                    // onUploaded: (path) async {
+                    //   setState(() => portfolioImages.add(path));
+                    //   await _uploadUserPortfolio(path);
+                    // },
                   );
                 },
                 child: DottedBorder(

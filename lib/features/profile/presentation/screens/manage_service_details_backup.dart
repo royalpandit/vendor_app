@@ -780,22 +780,39 @@ class _ManageServiceDetailsScreenState extends State<ManageServiceDetailsScreen>
       if (!isVenue) {
         // SERVICE CREATE
         final priceNum = num.tryParse(servicePriceController.text.trim()) ?? 0;
+
         final req = ServiceAddRequest(
           vendorId: vendorId,
-          subCategoryId: widget.subCategoryId,
-          name: businessNameController.text.trim(),
+          subCategoryId: widget.subCategoryId,          name: businessNameController.text.trim(),
           description: descriptionController.text.trim(),
           basePrice: priceNum,
-          priceType: 'day',
-          location: locationController.text.trim(),
+          priceType: "event",
+
+          location: addressController.text.trim(),
           city: cityController.text.trim(),
           state: stateController.text.trim(),
-          status: 1,
-          verify: 0,
-          latitude: latitudeController.text.trim(),   // auto (hidden)
-          longitude: longitudeController.text.trim(), // auto (hidden)
-          image: uploadedPath ?? '',
+
+          status: true,
+          verify: false,
+
+          latitude: latitudeController.text.trim(),
+          longitude: longitudeController.text.trim(),
+
+          profileImage:  "",
+          galleryImages: [""],
+
+          ownerName: businessNameController.text.trim(),
+          experienceYears: 0,
+
+          contactNumber: "",
+          whatsappNumber: "",
+          email: "",
+          serviceAreas: "",
+          gstNumber: "",
+
+          meta: null,
         );
+
 
         final ok = await context.read<AuthProvider>().createService(req);
         _showMsg(context.read<AuthProvider>().message ?? (ok ? 'Service added' : 'Failed'));

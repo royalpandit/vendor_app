@@ -163,8 +163,17 @@ Map<String, dynamic> _maskedHeaders(Map<String, dynamic> headers) {
   final h = Map<String, dynamic>.from(headers);
   final auth = h['Authorization']?.toString();
   if (auth != null && auth.isNotEmpty) {
-    h['Authorization'] = auth.length <= 16 ? '***' : '${auth.substring(0, 8)}***';
+    if (kDebugMode) {
+      // DEBUG mode me full token dikhega
+      h['Authorization'] = auth;
+    } else {
+      // Production me token hide rahega
+      h['Authorization'] = '***';
+    }
   }
+  // if (auth != null && auth.isNotEmpty) {
+  //   h['Authorization'] = auth.length <= 16 ? '***' : '${auth.substring(0, 8)}***';
+  // }
   return h;
 }
 
