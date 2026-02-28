@@ -24,22 +24,18 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String? _cachedVendorName;
-  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _fetchDashboardData();
     // Refresh dashboard data every 10 seconds
-    _refreshTimer = Timer.periodic(Duration(seconds: 10), (_) {
-      _fetchDashboardData();
-    });
+
   }
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
-    super.dispose();
+     super.dispose();
   }
 
   Future<void> _fetchDashboardData() async {
@@ -48,8 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final userData = await TokenStorage.getUserData();
     final userId = userData?.id ?? 0;
     final authProvider = context.read<AuthProvider>();
-    authProvider.fetchVendorDashboard(userId);
-    // Only fetch vendor details if not already cached
+    await authProvider.fetchVendorDashboard(userId);    // Only fetch vendor details if not already cached
     if (authProvider.vendorDetails == null) {
       await authProvider.fetchVendorDetails(userId);
     }
@@ -700,233 +695,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
-  // Old widgets - keeping for backward compatibility if needed
-  // Widget _buildDashboardCard({
-  //   required String title,
-  //   required String subtitle,
-  //   required Color color,
-  //   required String iconPath,
-  //   required VoidCallback onTap,
-  // }) {
-  //   return GestureDetector(
-  //     onTap: onTap,
-  //     child: Card(
-  //       elevation: 5,
-  //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-  //       child: Container(
-  //         width: (MediaQuery.of(context).size.width - 48) / 2,
-  //         padding: EdgeInsets.all(16),
-  //         decoration: BoxDecoration(
-  //           color: color,
-  //           borderRadius: BorderRadius.circular(10),
-  //         ),
-  //         child: Column(
-  //           mainAxisAlignment: MainAxisAlignment.start,
-  //           children: [
-  //             Row(
-  //               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //               children: [
-  //                 Image.asset(iconPath, width: 36, height: 36),
-  //                 Icon(Icons.arrow_forward, color: Colors.black),
-  //               ],
-  //             ),
-  //             Align(
-  //               alignment: Alignment.centerLeft,
-  //               child: Text(
-  //                 title,
-  //                 style: TextStyle(
-  //                   fontSize: 24,
-  //                   fontWeight: FontWeight.w500,
-  //                   color: Colors.black,
-  //                 ),
-  //               ),
-  //             ),
-  //             SizedBox(height: 8),
-  //             Align(
-  //               alignment: Alignment.centerLeft,
-  //               child: Text(
-  //                 subtitle,
-  //                 style: TextStyle(fontSize: 14, color: Colors.black),
-  //               ),
-  //             ),
-  //           ],
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
-
-  // Widget _buildLeadCard({
-  //   required int bookingId,
-  //   required String name,
-  //   required String email,
-  //   required String budget,
-  //   required String date,
-  //   required String location,
-  // }) {
-  //   return Card(
-  //     elevation: 5,
-  //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-  //     color: AppColors.lightGrey,
-  //     child: Padding(
-  //       padding: EdgeInsets.all(10),
-  //       child: Column(
-  //         crossAxisAlignment: CrossAxisAlignment.start,
-  //         children: [
-  //           Container(
-  //             padding: EdgeInsets.all(12),
-  //             decoration: BoxDecoration(
-  //               color: Colors.white,
-  //               borderRadius: BorderRadius.circular(10),
-  //             ),
-  //             child: Column(
-  //               crossAxisAlignment: CrossAxisAlignment.start,
-  //               children: [
-  //                 Row(
-  //                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //                   children: [
-  //                     Flexible(
-  //                       child: Text(
-  //                         name,
-  //                         overflow: TextOverflow.ellipsis,
-  //                         style: TextStyle(
-  //                           fontSize: 18,
-  //                           fontWeight: FontWeight.w500,
-  //                         ),
-  //                       ),
-  //                     ),
-  //                     SizedBox(width: 8),
-  //                     Text(
-  //                       'Budget',
-  //                       style: TextStyle(
-  //                         fontSize: 14,
-  //                         fontWeight: FontWeight.w500,
-  //                       ),
-  //                     ),
-  //                   ],
-  //                 ),
-  //                 SizedBox(height: 8),
-  //                 Row(
-  //                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //                   children: [
-  //                     Flexible(
-  //                       child: Text(
-  //                         email,
-  //                         overflow: TextOverflow.ellipsis,
-  //                         style: TextStyle(fontSize: 14, color: Colors.grey),
-  //                       ),
-  //                     ),
-  //                     SizedBox(width: 8),
-  //                     Text(budget, style: TextStyle(fontSize: 14)),
-  //                   ],
-  //                 ),
-  //                 SizedBox(height: 16),
-  //               ],
-  //             ),
-  //           ),
-  //           SizedBox(height: 16),
-  //           Row(
-  //             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //             children: [
-  //               Flexible(
-  //                 child: Row(
-  //                   children: [
-  //                     Icon(Icons.calendar_today, color: Colors.grey, size: 16),
-  //                     SizedBox(width: 4),
-  //                     Flexible(
-  //                       child: Text(
-  //                         date,
-  //                         overflow: TextOverflow.ellipsis,
-  //                         style: TextStyle(fontSize: 14, color: Colors.grey),
-  //                       ),
-  //                     ),
-  //                   ],
-  //                 ),
-  //               ),
-  //               SizedBox(width: 8),
-  //               Flexible(
-  //                 child: Row(
-  //                   children: [
-  //                     Icon(Icons.location_on, color: Colors.grey, size: 16),
-  //                     SizedBox(width: 4),
-  //                     Flexible(
-  //                       child: Text(
-  //                         location,
-  //                         overflow: TextOverflow.ellipsis,
-  //                         style: TextStyle(fontSize: 14, color: Colors.grey),
-  //                       ),
-  //                     ),
-  //                   ],
-  //                 ),
-  //               ),
-  //             ],
-  //           ),
-  //           SizedBox(height: 8),
-  //           Row(
-  //             mainAxisAlignment: MainAxisAlignment.end,
-  //             children: [
-  //             _buildActionButton(
-  //             bookingId: bookingId,
-  //             label: 'Decline Order',
-  //             color: Colors.red,
-  //             iconPath: 'assets/icons/decline_icon.png',
-  //             action: "reject",
-  //           ),
-
-  //               SizedBox(width: 8),
-  //               _buildActionButton(
-  //                 bookingId: bookingId,
-  //                 label: 'Accept Order',
-  //                 color: Colors.green,
-  //                 iconPath: 'assets/icons/accept_icon.png',
-  //                 action: "approve",
-  //               ),
-
-  //             ],
-  //           ),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
-
-
-
-  // Widget _buildActionButton({
-  //   required int bookingId,
-  //   required String label,
-  //   required Color color,
-  //   required String iconPath,
-  //   required String action, // approve | reject
-  // }) {
-  //   return TextButton.icon(
-  //     onPressed: () async {
-  //       final provider = context.read<AuthProvider>();
-
-  //       final success = await provider.updateBookingStatus(
-  //         bookingId: bookingId,
-  //         action: action,
-  //       );
-
-  //       if (success) {
-  //         // ignore: unawaited_futures
-  //         AppMessage.show(context, provider.message ?? 'Updated');
-
-  //         // 🔄 Refresh dashboard after update
-  //         final user = await TokenStorage.getUserData();
-  //         final userId = user?.id ?? 0;
-  //         provider.fetchVendorDashboard(userId);
-  //       } else {
-  //         // ignore: unawaited_futures
-  //         AppMessage.show(context, provider.message ?? 'Failed');
-  //       }
-  //     },
-  //     icon: Image.asset(iconPath, width: 20, height: 20),
-  //     label: Text(label, style: TextStyle(color: color)),
-  //   );
-  // }
-
 }
 
 
