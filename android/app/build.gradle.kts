@@ -1,3 +1,5 @@
+import java.text.SimpleDateFormat
+import java.util.Date
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -35,6 +37,23 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+
+    android.applicationVariants.all {
+        outputs.all {
+
+            val appName = "vendor_app"
+
+            val versionName = android.defaultConfig.versionName
+            val versionCode = android.defaultConfig.versionCode
+
+            val date = SimpleDateFormat("yyyy-MM-dd").format(Date())
+
+            val newApkName = "${appName}_v${versionName}_build${versionCode}_${date}.apk"
+
+            (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl)
+                .outputFileName = newApkName
         }
     }
 }
