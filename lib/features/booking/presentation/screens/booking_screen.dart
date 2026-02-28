@@ -24,7 +24,6 @@ class _BookingScreenState extends State<BookingScreen> {
   String? _selectedStatus;
   DateTime? _selectedDate;
   String? _cachedVendorName;
-  Timer? _refreshTimer;
 
   @override
   void initState() {
@@ -38,16 +37,13 @@ class _BookingScreenState extends State<BookingScreen> {
     });
     _fetchUserIdAndBookings();
     // Refresh data every 10 seconds
-    _refreshTimer = Timer.periodic(Duration(seconds: 10), (_) {
-      _fetchUserIdAndBookings();
-    });
+
   }
 
   @override
   void dispose() {
     _searchController.dispose();
-    _refreshTimer?.cancel();
-    super.dispose();
+     super.dispose();
   }
 
   Future<void> _fetchUserIdAndBookings() async {
