@@ -81,15 +81,74 @@ class _ChatScreenState extends State<ChatScreen> {
               backgroundImage: NetworkImage(widget.image),
             ),
             const SizedBox(width: 12),
-            Text(
-              widget.name,
-              style: const TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.w600),
+            Expanded(
+              child: Text(
+                widget.name,
+                style: const TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.w600),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: (value) async {
+              if (value == 'delete') {
+                // Show confirmation dialog
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Delete Conversation'),
+                    content: const Text('Are you sure you want to delete this conversation? This action cannot be undone.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          final prov = context.read<AuthProvider>();
+                          final success = await prov.deleteConversation(widget.conversationId);
+                          if (success && mounted) {
+                            Navigator.pop(context, true); // Return true to indicate deletion
+                          }
+                        },
+                        child: const Text('Delete', style: TextStyle(color: Color(0xFFFF4678))),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete, color: Color(0xFFFF4678), size: 20),
+                    SizedBox(width: 8),
+                    Text('Delete Chat'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
         shape: const Border(bottom: BorderSide(color: Color(0x2870737C), width: 0.5)),
       ),
-      body: Column(
+      body: SafeArea(
+        top: false,
+        bottom: true,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment(0.43, 0.05),
+              end: Alignment(0.44, 0.26),
+              colors: [const Color(0xFFFFE5E8), Colors.white],
+            ),
+          ),
+          child: Column(
         children: [
           Expanded(
             child: Consumer<AuthProvider>(
@@ -101,7 +160,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 }
 
                 return ListView.builder(
-                  reverse: false, // Set to true if your API returns newest first
+                  reverse: false,
                   padding: const EdgeInsets.all(16),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
@@ -110,14 +169,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     final bool isMe =
                         msg.sender.id == (_authenticatedUserId ?? widget.senderId);
 
-                    return _buildMessageBubble(msg.message ?? "", isMe);
-                    // final msg = messages[index].lastMessage;
-                    //
-                    // // FIX: Robust isMe check.
-                    // // Compare against the logged-in ID, or the senderId passed in widget.
-                    // final bool isMe = msg?.senderId == (_authenticatedUserId ?? widget.senderId);
-                    //
-                    // return _buildMessageBubble(msg?.message ?? "", isMe);
+                    return _buildMessageBubble(msg.message ?? "", isMe, msg.id, msg.conversationId);
                   },
                 );
               },
@@ -126,39 +178,110 @@ class _ChatScreenState extends State<ChatScreen> {
           _buildInputArea(),
         ],
       ),
+        ),
+      ),
     );
   }
 
-  Widget _buildMessageBubble(String text, bool isMe) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Align(
-        // Aligns YOUR messages to the RIGHT, others to the LEFT
-        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-          decoration: BoxDecoration(
-            // YOUR bubbles are PINK, others are GREY
-            color: isMe ? const Color(0xFFFF4678) : const Color(0xFFF1F1F1),
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(16),
-              topRight: const Radius.circular(16),
-              bottomLeft: Radius.circular(isMe ? 16 : 4),
-              bottomRight: Radius.circular(isMe ? 4 : 16),
+  Widget _buildMessageBubble(String text, bool isMe, int messageId, int conversationId) {
+    return GestureDetector(
+      onLongPress: isMe
+          ? () => _showMessageOptions(messageId, conversationId)
+          : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Align(
+          // Aligns YOUR messages to the RIGHT, others to the LEFT
+          alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+            decoration: BoxDecoration(
+              // YOUR bubbles are PINK, others are GREY
+              color: isMe ? const Color(0xFFFF4678) : const Color(0xFFF1F1F1),
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(16),
+                topRight: const Radius.circular(16),
+                bottomLeft: Radius.circular(isMe ? 16 : 4),
+                bottomRight: Radius.circular(isMe ? 4 : 16),
+              ),
             ),
-          ),
-          child: Text(
-            text,
-            style: TextStyle(
-              color: isMe ? Colors.white : Colors.black87,
-              fontSize: 15,
-              fontFamily: 'Onest',
+            child: Text(
+              text,
+              style: TextStyle(
+                color: isMe ? Colors.white : Colors.black87,
+                fontSize: 15,
+                fontFamily: 'Onest',
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  void _showMessageOptions(int messageId, int conversationId) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.delete, color: Color(0xFFFF4678)),
+              title: const Text('Delete Message'),
+              onTap: () {
+                Navigator.pop(context);
+                _showDeleteConfirmation(messageId, conversationId);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.close, color: Colors.grey),
+              title: const Text('Cancel'),
+              onTap: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(int messageId, int conversationId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Message'),
+        content: const Text('Are you sure you want to delete this message?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteMessage(messageId, conversationId);
+            },
+            child: const Text('Delete', style: TextStyle(color: Color(0xFFFF4678))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteMessage(int messageId, int conversationId) async {
+    final success = await context.read<AuthProvider>().deleteMessage(
+      messageId: messageId,
+      conversationId: conversationId,
+    );
+
+    if (success && mounted) {
+      await _fetchMessages();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Message deleted'), duration: Duration(seconds: 2)),
+      );
+    }
   }
 
   Widget _buildInputArea() {

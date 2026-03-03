@@ -58,7 +58,7 @@ class _ManageNotificationScreenState extends State<ManageNotificationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9),
+      backgroundColor: Colors.white,
       body: Column(
         children: [
           // Custom App Bar
@@ -86,6 +86,7 @@ class _ManageNotificationScreenState extends State<ManageNotificationScreen> {
                         width: 24,
                         height: 24,
                         fit: BoxFit.contain,
+                        color: const Color(0xFF666666),
                       ),
                     ),
                   ),
@@ -94,10 +95,10 @@ class _ManageNotificationScreenState extends State<ManageNotificationScreen> {
                   'Manage Notifications',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.black,
+                    color: Color(0xFF1a1a1a),
                     fontSize: 17,
                     fontFamily: 'Onest',
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                     height: 1.41,
                   ),
                 ),
@@ -186,6 +187,13 @@ class _ManageNotificationScreenState extends State<ManageNotificationScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  shadows: [
+                    BoxShadow(
+                      color: const Color(0xFFFF4678).withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: isLoading
                     ? const Center(
@@ -229,8 +237,19 @@ class _ManageNotificationScreenState extends State<ManageNotificationScreen> {
       decoration: ShapeDecoration(
         color: Colors.white,
         shape: RoundedRectangleBorder(
+          side: const BorderSide(
+            width: 1,
+            color: Color(0xFFE0E0E0),
+          ),
           borderRadius: BorderRadius.circular(12),
         ),
+        shadows: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
@@ -244,7 +263,7 @@ class _ManageNotificationScreenState extends State<ManageNotificationScreen> {
                 Text(
                   title,
                   style: const TextStyle(
-                    color: Color(0xFF2B2D42),
+                    color: Color(0xFF1a1a1a),
                     fontSize: 16,
                     fontFamily: 'Onest',
                     fontWeight: FontWeight.w600,
@@ -254,7 +273,7 @@ class _ManageNotificationScreenState extends State<ManageNotificationScreen> {
                 Text(
                   subtitle,
                   style: const TextStyle(
-                    color: Color(0xFFA7A7A7),
+                    color: Color(0xFF999999),
                     fontSize: 12,
                     fontFamily: 'Onest',
                     fontWeight: FontWeight.w400,

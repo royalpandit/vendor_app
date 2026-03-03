@@ -72,6 +72,7 @@ class AuthProvider extends ChangeNotifier {
 
   DashboardResponse? dashboardData;
   VendorDetails? vendorDetails;
+  Map<String, dynamic>? userDetails;
   ServiceAddResponse? createdService;
   VenueCreateResponse? createdVenue;
   List<CityItem> cities = [];
@@ -282,13 +283,9 @@ class AuthProvider extends ChangeNotifier {
 
       if (res is ApiSuccess<BaseResponse<DashboardResponse>>) {
         // Handle success response
-        if (res.data != null) {
-          dashboardData = res.data!.data; // Access the 'data' from the response
-          message = res.data!.message ?? 'Dashboard fetched successfully';
-        } else {
-          dashboardData = null;
-          message = 'No data available for the dashboard';
-        }
+        final resp = res.data;
+        dashboardData = resp?.data;
+        message = resp?.message ?? 'Dashboard fetched successfully';
       } else if (res is ApiFailure<BaseResponse<DashboardResponse>>) {
         // Handle failure response
         dashboardData = null;
@@ -315,14 +312,11 @@ class AuthProvider extends ChangeNotifier {
       loading = false;
       if (res is ApiSuccess<BaseResponse<List<NewLead>>>) {
         // Handle success response
-        if (res.data != null) {
-          // Accessing the 'data' from BaseResponse
-          bookingLeads =
-              res.data!.data!; // Access the list of leads (data) here
-          message = bookingLeads.isNotEmpty
-              ? 'Booking leads fetched successfully'
-              : 'No leads available';
-        }
+        final resp = res.data;
+        bookingLeads = resp?.data ?? [];
+        message = bookingLeads.isNotEmpty
+            ? 'Booking leads fetched successfully'
+            : 'No leads available';
       } else if (res is ApiFailure<BaseResponse<List<NewLead>>>) {
         message = res.message ?? 'Failed to fetch booking leads';
       }
@@ -345,15 +339,11 @@ class AuthProvider extends ChangeNotifier {
       loading = false;
       if (res is ApiSuccess<BaseResponse<List<ActiveBookingModel>>>) {
         // Handle success response
-        if (res.data != null) {
-          activeBookingsModels = res.data!.data!;
-          ; // Save active bookings
-          message =activeBookingsModels.isNotEmpty
-              ? 'Active bookings fetched successfully'
-              : 'No active bookings available';
-        } else {
-          message = 'No active bookings available';
-        }
+        final resp = res.data;
+        activeBookingsModels = resp?.data ?? [];
+        message = activeBookingsModels.isNotEmpty
+            ? 'Active bookings fetched successfully'
+            : 'No active bookings available';
       } else if (res is ApiFailure<BaseResponse<List<ActiveBookingModel>>>) {
         // If API returned 404 it will come through as failure; treat as empty result
         if (res.statusCode == 404) {
@@ -361,6 +351,39 @@ class AuthProvider extends ChangeNotifier {
           message = 'No active bookings available';
         } else {
           message = res.message ?? 'Failed to fetch active bookings';
+        }
+      }
+    } catch (e) {
+      loading = false;
+      message = 'Error: ${e.toString()}';
+    }
+
+    notifyListeners();
+  }
+
+  /// Fetch all bookings using the vendor bookings endpoint
+  Future<void> fetchAllBookings(int userId) async {
+    loading = true;
+    message = null;
+    activeBookingsModels = [];
+    notifyListeners();
+    try {
+      final res = await _repo.getActiveBookings(userId);
+      loading = false;
+      if (res is ApiSuccess<BaseResponse<List<ActiveBookingModel>>>) {
+        // Handle success response
+        final resp = res.data;
+        activeBookingsModels = resp?.data ?? [];
+        message = activeBookingsModels.isNotEmpty
+            ? 'Bookings fetched successfully'
+            : 'No bookings available';
+      } else if (res is ApiFailure<BaseResponse<List<ActiveBookingModel>>>) {
+        // If API returned 404 treat as empty result
+        if (res.statusCode == 404) {
+          activeBookingsModels = [];
+          message = 'No bookings available';
+        } else {
+          message = res.message ?? 'Failed to fetch bookings';
         }
       }
     } catch (e) {
@@ -536,6 +559,25 @@ class AuthProvider extends ChangeNotifier {
         message = res.data.message ?? 'Vendor details fetched successfully';
       case ApiFailure():
         message = res.message ?? 'Failed to fetch vendor details';
+    }
+    notifyListeners();
+  }
+
+  Future<void> fetchUserDetails(int userId) async {
+    loading = true;
+    message = null;
+    userDetails = null;
+    notifyListeners();
+
+    final res = await _repo.getUser(userId);
+
+    loading = false;
+    switch (res) {
+      case ApiSuccess<BaseResponse<Map<String, dynamic>>>():
+        userDetails = res.data.data;
+        message = res.data.message ?? 'User details fetched successfully';
+      case ApiFailure():
+        message = res.message ?? 'Failed to fetch user details';
     }
     notifyListeners();
   }
@@ -762,13 +804,13 @@ class AuthProvider extends ChangeNotifier {
   // ---------- SERVICE OPERATIONS ----------
   
   /// Get service details
-  Future<bool> fetchServiceDetails(int serviceId) async {
+  Future<bool> fetchServiceDetails(int serviceId, {int? vendorId}) async {
     loading = true;
     message = null;
     serviceDetails = null;
     notifyListeners();
 
-    final res = await _repo.getServiceDetails(serviceId);
+    final res = await _repo.getServiceDetails(serviceId, vendorId: vendorId);
 
     loading = false;
     switch (res) {
@@ -832,6 +874,29 @@ class AuthProvider extends ChangeNotifier {
       case ApiSuccess<BaseResponse<Map<String, dynamic>>>():
         message = res.data.message ?? 'Service updated successfully';
         notifyListeners();
+        return true;
+
+      case ApiFailure():
+        message = res.message;
+        notifyListeners();
+        return false;
+    }
+  }
+
+  /// Update service status (hide/show)
+  Future<bool> updateServiceStatus(int serviceId, String status) async {
+    loading = true;
+    message = null;
+    notifyListeners();
+
+    final res = await _repo.updateServiceStatus(serviceId, status);
+
+    loading = false;
+    switch (res) {
+      case ApiSuccess<BaseResponse<Map<String, dynamic>>>():
+        message = res.data.message ?? 'Status updated successfully';
+        // Refresh service details to get the latest status
+        await fetchServiceDetails(serviceId, vendorId: serviceDetails?.vendorId);
         return true;
 
       case ApiFailure():

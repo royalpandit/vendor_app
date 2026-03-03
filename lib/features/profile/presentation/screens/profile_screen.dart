@@ -17,6 +17,7 @@ import 'package:vendor_app/features/profile/presentation/screens/help_support_sc
 import 'package:vendor_app/features/profile/presentation/screens/manage_notification_screen.dart';
 import 'package:vendor_app/features/profile/presentation/screens/manage_service_details.dart';
 import 'package:vendor_app/features/profile/presentation/screens/service_list_screen.dart';
+import 'package:vendor_app/core/utils/confirm_dialog.dart';
 
 class ProfileScreen extends StatefulWidget {
   final int currentIndex;
@@ -251,11 +252,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: currentTab == 'Portfolio' ? _buildPortfolioSection() : _buildSettingsSection(),
+        body: Container(
+          color: Colors.white,
+          child: SafeArea(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: currentTab == 'Portfolio' ? _buildPortfolioSection() : _buildSettingsSection(),
+              ),
             ),
           ),
         ),
@@ -277,7 +281,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               fontSize: 16,
               fontFamily: 'Onest',
               fontWeight: FontWeight.w600,
-              color: selected ? const Color(0xFFFF4678) : Colors.grey,
+              color: selected ? const Color(0xFF666666) : Colors.grey,
             ),
           ),
           const SizedBox(height: 6),
@@ -285,7 +289,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             height: 3,
             width: 70,
             decoration: BoxDecoration(
-              color: selected ? const Color(0xFFFF4678) : Colors.transparent,
+              color: selected ? const Color(0xFF666666) : Colors.transparent,
               borderRadius: BorderRadius.circular(4),
             ),
           ),
@@ -352,21 +356,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   await _uploadUserPortfolio(path);
                   await _fetchUserPortfolio();
                 },
-                // onUploaded: (path) async {
-                //   setState(() => portfolioImages.add(path));
-                //   await _uploadUserPortfolio(path);
-                // },
               );
             },
             child: Container(
               width: double.infinity,
-              height: 40,
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+              height: 56,
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
               decoration: ShapeDecoration(
                 color: const Color(0xFFFF4678),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
+                shadows: [
+                  BoxShadow(
+                    color: const Color(0xFFFF4678).withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: const Center(
                 child: Text(
@@ -430,6 +437,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         AppIcons.galleryExportIcon,
                         width: 32,
                         height: 32,
+                        color: const Color(0xFFFF4678),
                       ),
                     ),
                   ),
@@ -455,17 +463,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Settings Section (no boxed background - only bottom borders)
   Widget _buildSettingsSection() {
     final items = <_SettingsItem>[
-      // Temporarily hiding services tab; will re-enable later
-      // _SettingsItem(
-      //   iconData: CupertinoIcons.list_bullet,
-      //   iconBgColor: const Color(0xFF4CAF50),
-      //   title: 'My Services',
-      //   description: 'View and manage your services list',
-      //   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ServiceListScreen())),
-      // ),
+      _SettingsItem(
+        iconData: CupertinoIcons.list_bullet,
+        iconBgColor: const Color(0xFF666666),
+        title: 'My Services',
+        description: 'View and manage your services list',
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ServiceListScreen())),
+      ),
       _SettingsItem(
         iconPath: AppIcons.briefcaseIcon,
-        iconBgColor: const Color(0xFF00AEFF),
+        iconBgColor: const Color(0xFF666666),
         title: 'Manage Service Details',
         description: 'Edit or add any service related information that you want your clients to know',
         onTap: () {
@@ -481,29 +488,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       _SettingsItem(
         iconPath: AppIcons.notificationNewIcon,
-        iconBgColor: const Color(0xFFAE00FF),
+        iconBgColor: const Color(0xFF666666),
         title: 'Manage Notifications',
         description: 'Manage how you receive updates and reminders, by individually toggling settings',
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ManageNotificationScreen())),
       ),
       _SettingsItem(
         iconPath: AppIcons.lifeBuoyIcon,
-        iconBgColor: const Color(0xFF14A38B),
+        iconBgColor: const Color(0xFF666666),
         title: 'Help and Support',
         description: 'Get all your queries solved by our various modes of help and support system',
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => HelpAndSupportScreen())),
       ),
       _SettingsItem(
         iconPath: AppIcons.logoutNewIcon,
-        iconBgColor: const Color(0xFFFF7171),
+        iconBgColor: const Color(0xFF666666),
         title: 'Logout',
         description: 'Logout from your account, and login whenever needed',
         onTap: () async {
-          // clear both persisted token and the in‑memory cache held by AuthProvider
-          await TokenStorage.clear();
-          context.read<AuthProvider>().clearCache();
-          if (!mounted) return;
-          Navigator.pushReplacementNamed(context, RoutePaths.phoneVerify);
+          final confirmed = await showConfirmDialog(
+            context,
+            title: 'Confirm Logout',
+            message: 'Are you sure you want to logout?',
+            confirmText: 'Logout',
+            cancelText: 'Cancel',
+          );
+
+          if (confirmed == true) {
+            // clear both persisted token and the in‑memory cache held by AuthProvider
+            await TokenStorage.clear();
+            context.read<AuthProvider>().clearCache();
+            if (!mounted) return;
+            Navigator.pushReplacementNamed(context, RoutePaths.phoneVerify);
+          }
         },
         isLast: true,
       ),
@@ -511,14 +528,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Center(
       child: Container(
-        width: 380,
+        width: double.infinity,
         padding: const EdgeInsets.all(12),
         clipBehavior: Clip.antiAlias,
         decoration: ShapeDecoration(
-          color: const Color(0xFFF9F9F9),
+          color: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(
+              color: Color(0xFFE0E0E0),
+              width: 1,
+            ),
           ),
+          shadows: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -534,7 +562,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         border: Border(
                           bottom: BorderSide(
                             width: 1,
-                            color: Color(0x1470737C),
+                            color: Color(0xFFE0E0E0),
                           ),
                         ),
                       ),
@@ -547,18 +575,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       width: 46,
                       height: 46,
                       decoration: ShapeDecoration(
-                        color: it.iconBgColor,
+                        color: const Color(0xFFF5F5F5),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
                       child: Center(
                         child: it.iconData != null
-                            ? Icon(it.iconData, size: 24, color: Colors.white)
+                            ? Icon(it.iconData, size: 24, color: it.iconBgColor)
                             : Image.asset(
                                 it.iconPath ?? '',
                                 width: 24,
                                 height: 24,
+                                color: it.iconBgColor,
                               ),
                       ),
                     ),
@@ -572,7 +601,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Text(
                             it.title,
                             style: const TextStyle(
-                              color: Color(0xFF171719),
+                              color: Color(0xFF1a1a1a),
                               fontSize: 16,
                               fontFamily: 'Onest',
                               fontWeight: FontWeight.w500,
@@ -584,7 +613,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Text(
                             it.description,
                             style: const TextStyle(
-                              color: Color(0x9B37383C),
+                              color: Color(0xFF999999),
                               fontSize: 12,
                               fontFamily: 'Onest',
                               fontWeight: FontWeight.w400,

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:vendor_app/core/utils/CustomStepper.dart';
 import 'package:vendor_app/core/utils/app_colors.dart';
 import 'package:vendor_app/core/utils/app_icons.dart';
+import 'package:vendor_app/core/utils/app_icons.dart';
 import 'package:vendor_app/features/authentication/data/models/request/vendor_create_request.dart';
 import 'package:vendor_app/features/authentication/data/models/resposne/category_model_response.dart';
-import 'package:vendor_app/features/authentication/data/models/resposne/subcategory_model_response.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
 import 'package:vendor_app/features/home/presentation/screens/home_screen.dart';
 
@@ -41,7 +41,6 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
   final _descriptionController = TextEditingController();
 
   CategoryModelResponse? _selectedCategory;
-  SubcategoryModelResponse? _selectedSubcategory;
 
   // Step-3
   final _benefitsController = TextEditingController();
@@ -150,10 +149,6 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
       _showMsg('Please select a business category');
       return;
     }
-    if (_selectedSubcategory == null) {
-      _showMsg('Please select a subcategory');
-      return;
-    }
     if (_businessPhotoPath == null) {
       _showMsg('Please upload business photo');
       return;
@@ -175,8 +170,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
       email: _emailController.text.trim(),
       adharNumber: _aadharController.text.trim(),
       businessName: _businessNameController.text.trim(),
-    //  businessCategory: _selectedCategory!.name, // keeping name as per sample
-      businessCategory: _selectedSubcategory!.id, // keeping name as per sample
+      businessCategory: _selectedCategory!.id, // Send category ID as per API
 
       experienceInBusiness: int.tryParse(_experienceController.text.trim()) ?? 0,
       priceRange: priceRange,
@@ -221,9 +215,20 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
         children: [
           if (anyLoading) const LinearProgressIndicator(minHeight: 3),
           Padding(
-            padding: const EdgeInsets.only(top: 80.0),
+            padding: const EdgeInsets.only(top: 40.0),
             child: Column(
               children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).maybePop(),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Image.asset(AppIcons.arrowLeft, width: 24, height: 24),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 CustomStepper(
                   currentStep: _currentStep,
                   onStepChanged: (step) => setState(() => _currentStep = step),
@@ -349,29 +354,16 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Category Dropdown (from API)
+          // Category Dropdown (from API) - Only Services & Venue (exclude Matrimony)
           _buildCategoryDropdown(
             label: 'Business Category',
             value: _selectedCategory,
-            items: categories,
+            items: categories.where((c) => (c.id == 1 || c.id == 2) && c.name != 'Matrimony').toList(),
             onChanged: (cat) async {
               setState(() {
                 _selectedCategory = cat;
-                _selectedSubcategory = null;
               });
-              if (cat != null) {
-                await context.read<AuthProvider>().fetchSubcategories(cat.id);
-              }
             },
-          ),
-          const SizedBox(height: 15),
-
-          // Subcategory dropdown (depends on selected category)
-          _buildSubcategoryDropdown(
-            label: 'Subcategory',
-            value: _selectedSubcategory,
-            items: subs,
-            onChanged: (sub) => setState(() => _selectedSubcategory = sub),
           ),
           const SizedBox(height: 15),
 
@@ -661,46 +653,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
     ]);
   }
 
-  Widget _buildSubcategoryDropdown({
-    required String label,
-    required SubcategoryModelResponse? value,
-    required List<SubcategoryModelResponse> items,
-    required ValueChanged<SubcategoryModelResponse?> onChanged,
-  }) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label,
-          style: const TextStyle(
-            fontFamily: 'OnestMedium',
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-            color: AppColors.labelColor,
-          )),
-      const SizedBox(height: 8),
-      DropdownButtonFormField<SubcategoryModelResponse>(
-        value: value,
-        decoration: InputDecoration(
-          hintText: 'Select your subcategory',
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.textFieldColor),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.textFieldColor),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.pinkColor, width: 2),
-          ),
-        ),
-        items: items.map((s) => DropdownMenuItem(value: s, child: Text(s.name))).toList(),
-        onChanged: onChanged,
-        validator: (v) => v == null ? 'Please select subcategory' : null,
-      ),
-    ]);
-  }
+
 }
 
 

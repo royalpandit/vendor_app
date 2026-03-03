@@ -12,6 +12,7 @@ import 'package:vendor_app/core/utils/skeleton_loader.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
 import 'package:vendor_app/features/booking/presentation/screens/active_booking_screen.dart';
 import 'package:vendor_app/features/home/presentation/screens/new_leads_screen.dart';
+import 'package:vendor_app/features/booking/presentation/widgets/booking_details_bottom_sheet.dart';
 import 'package:vendor_app/core/utils/app_message.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -363,7 +364,9 @@ class _HomeScreenState extends State<HomeScreen> {
     required String date,
     required String location,
   }) {
-    return Container(
+    return GestureDetector(
+      onTap: () => showBookingDetailsBottomSheet(context, bookingId),
+      child: Container(
       width: 380,
       padding: const EdgeInsets.all(12),
       clipBehavior: Clip.antiAlias,
@@ -538,6 +541,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ],
+      ),
       ),
     );
   }

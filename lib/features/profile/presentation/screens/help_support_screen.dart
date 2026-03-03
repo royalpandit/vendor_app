@@ -5,7 +5,7 @@ class HelpAndSupportScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9),
+      backgroundColor: Colors.white,
       body: Column(
         children: [
           // Custom App Bar
@@ -33,6 +33,7 @@ class HelpAndSupportScreen extends StatelessWidget {
                         width: 24,
                         height: 24,
                         fit: BoxFit.contain,
+                        color: const Color(0xFF666666),
                       ),
                     ),
                   ),
@@ -41,10 +42,10 @@ class HelpAndSupportScreen extends StatelessWidget {
                   'Help and Support',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.black,
+                    color: Color(0xFF1a1a1a),
                     fontSize: 17,
                     fontFamily: 'Onest',
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                     height: 1.41,
                   ),
                 ),
@@ -59,13 +60,21 @@ class HelpAndSupportScreen extends StatelessWidget {
               width: double.infinity,
               clipBehavior: Clip.antiAlias,
               decoration: ShapeDecoration(
+                color: Colors.white,
                 shape: RoundedRectangleBorder(
-                  side: BorderSide(
-                    width: 0.50,
-                    color: Colors.black.withOpacity(0.04),
+                  side: const BorderSide(
+                    width: 1,
+                    color: Color(0xFFE0E0E0),
                   ),
                   borderRadius: BorderRadius.circular(8),
                 ),
+                shadows: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -135,16 +144,17 @@ class HelpAndSupportScreen extends StatelessWidget {
                     width: 24,
                     height: 24,
                     fit: BoxFit.contain,
+                    color: const Color(0xFF666666),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Text(
                   title,
                   style: const TextStyle(
-                    color: Colors.black,
+                    color: Color(0xFF1a1a1a),
                     fontSize: 16,
                     fontFamily: 'Onest',
-                    fontWeight: FontWeight.w400,
+                    fontWeight: FontWeight.w500,
                     height: 1.50,
                   ),
                 ),
@@ -158,6 +168,7 @@ class HelpAndSupportScreen extends StatelessWidget {
                 width: 24,
                 height: 24,
                 fit: BoxFit.contain,
+                color: const Color(0xFF999999),
               ),
             ),
           ],

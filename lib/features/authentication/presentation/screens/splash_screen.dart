@@ -26,6 +26,8 @@ class _SplashScreenState extends State<SplashScreen> {
 
   // ------------------ STARTUP FLOW ------------------
   Future<void> _runStartupFlow() async {
+    // Check location permission but don't block on high-accuracy location
+    // Location will be captured in background
     final granted = await _ensureLocationPermission();
     if (!mounted) return;
 
@@ -49,19 +51,24 @@ class _SplashScreenState extends State<SplashScreen> {
       return;
     }
 
-    try {
-      await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-      // vendor position captured
-    } catch (e) {
-      // ignore location errors
-    }
+    // Capture location in background - don't wait for high accuracy
+    _captureLocationInBackground();
 
-    await Future.delayed(const Duration(milliseconds: 800));
+    // Minimal delay for splash screen visibility
+    await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
 
     await _checkUserLoginStatus();
+  }
+
+  // Capture location in background without blocking
+  void _captureLocationInBackground() {
+    Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.medium, // Faster than high
+      timeLimit: const Duration(seconds: 5), // Don't wait forever
+    ).catchError((e) {
+      // Ignore location errors - not critical for app flow
+    });
   }
 
   // ------------------ LOGIN CHECK ------------------
@@ -95,21 +102,43 @@ class _SplashScreenState extends State<SplashScreen> {
     try {
       final authProvider = context.read<AuthProvider>();
       
-      // Preload all essential data in parallel
-      await Future.wait([
-        authProvider.fetchVendorDashboard(userId),
-        authProvider.fetchVendorDetails(userId),
-        authProvider.fetchActiveBookings(userId),
-        authProvider.fetchBookingLeads(userId),
-        authProvider.fetchInboxMessages(userId),
-        authProvider.fetchNotificationSettings(userId),
-      ]);
+      // Load essential dashboard data first (most critical for home screen)
+      await authProvider.fetchVendorDashboard(userId);
       
-      // user data preloaded successfully
+      // Load other data in background without blocking
+      // This allows the home screen to show immediately while data loads
+      _preloadSecondaryDataInBackground(authProvider, userId);
     } catch (e) {
-      // error preloading user data
-      // Continue anyway - screens will load data if needed
+      // Error preloading dashboard data - continue anyway
+      // Screens will load data if needed
     }
+  }
+
+  // Preload secondary data without blocking navigation
+  void _preloadSecondaryDataInBackground(AuthProvider authProvider, int userId) {
+    // Run in background - don't await
+    Future.microtask(() async {
+      try {
+        // Load less critical data after a small delay
+        await Future.delayed(const Duration(milliseconds: 300));
+        if (!mounted) return;
+        
+        // Load in sequence with small delays to avoid network congestion
+        await authProvider.fetchVendorDetails(userId);
+        await Future.delayed(const Duration(milliseconds: 100));
+        
+        await authProvider.fetchActiveBookings(userId);
+        await Future.delayed(const Duration(milliseconds: 100));
+        
+        await authProvider.fetchBookingLeads(userId);
+        await Future.delayed(const Duration(milliseconds: 100));
+        
+        await authProvider.fetchInboxMessages(userId);
+        await authProvider.fetchNotificationSettings(userId);
+      } catch (e) {
+        // Silently fail - not critical for app operation
+      }
+    });
   }
 
   // ------------------ PERMISSION HELPERS ------------------

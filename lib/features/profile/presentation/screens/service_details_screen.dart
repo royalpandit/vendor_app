@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/service_meta_field_response.dart';
 import 'package:vendor_app/core/utils/app_message.dart';
+import 'package:vendor_app/core/network/token_storage.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
   final int serviceId;
@@ -38,7 +39,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     final prov = context.read<AuthProvider>();
-    await prov.fetchServiceDetails(widget.serviceId);
+    final user = await TokenStorage.getUserData();
+    final vendorId = user?.id;
+    await prov.fetchServiceDetails(widget.serviceId, vendorId: vendorId);
     final svc = prov.serviceDetails;
     if (svc != null) {
       _nameCtrl.text = svc.name;
@@ -51,7 +54,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       _lngCtrl.text = svc.longitude ?? '';
 
       // populate meta
-      if (svc.meta != null) {
+      if (svc.meta != null && svc.meta!.isNotEmpty) {
         _metaFields = svc.meta!.entries
             .map((e) => ServiceMetaFieldResponse(
                   id: 0,
@@ -59,7 +62,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   label: e.key,
                   type: e.value is bool ? 'toggle' :
                         (e.value is List ? 'multi_select' : 'text'),
-                  options: e.value is List ? List<String>.from(e.value) : null,
+                  options: e.value is List 
+                      ? List<String>.from((e.value as List).where((v) => v is String))
+                      : null,
                   isRequired: false,
                   isFilterable: false,
                 ))
@@ -98,6 +103,18 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       // reload details
       _load();
     }
+  }
+
+  Future<void> _toggleServiceStatus() async {
+    final prov = context.read<AuthProvider>();
+    final svc = prov.serviceDetails;
+    if (svc == null) return;
+
+    final newStatus = svc.status == true ? 'hide' : 'show';
+    final ok = await prov.updateServiceStatus(widget.serviceId, newStatus);
+    if (!mounted) return;
+    AppMessage.show(
+        context, prov.message ?? (ok ? 'Status updated' : 'Failed to update status'));
   }
 
   Future<List<String>?> _showMultiSelectDialog(ServiceMetaFieldResponse f) async {
@@ -139,7 +156,49 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     final svc = prov.serviceDetails;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Service Details')),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Image.asset(
+              'assets/icons/arrow-left.png',
+              width: 24,
+              height: 24,
+              color: const Color(0xFF666666),
+            ),
+          ),
+        ),
+        title: const Text(
+          'Service Details',
+          style: TextStyle(
+            fontSize: 18,
+            fontFamily: 'Onest',
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1a1a1a),
+          ),
+        ),
+        centerTitle: false,
+        actions: [
+          GestureDetector(
+            onTap: () => _toggleServiceStatus(),
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Image.asset(
+                'assets/icons/edit_icon.png',
+                width: 24,
+                height: 24,
+                color: svc?.status == true
+                    ? const Color(0xFFFF4678)
+                    : const Color(0xFF999999),
+              ),
+            ),
+          ),
+        ],
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : svc == null
@@ -151,10 +210,12 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                     children: [
                       Text(svc.name,
                           style: const TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.bold)),
+                              fontSize: 20,
+                              fontFamily: 'Onest',
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1a1a1a))),
                       const SizedBox(height: 12),
 
-                      // image carousel or placeholder
                       if (svc.images.isNotEmpty)
                         SizedBox(
                           height: 180,
@@ -163,19 +224,33 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                             itemCount: svc.images.length,
                             separatorBuilder: (_, __) => const SizedBox(width: 8),
                             itemBuilder: (context, i) {
-                              final url = svc.images[i].imageUrl;
-                              if (url.contains('default-service.jpg')) {
-                                return const Icon(Icons.broken_image,
-                                    size: 64, color: Colors.grey);
+                              final img = svc.images[i];
+                              final url = img.imageUrl;
+                              
+                              // Show placeholder if URL is empty or default
+                              if (url.isEmpty || url.contains('default-service.jpg')) {
+                                return Container(
+                                  height: 180,
+                                  width: 300,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF5F5F5),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(Icons.image, size: 48, color: Color(0xFFCCCCCC)),
+                                );
                               }
-                              return Image.network(
-                                url,
-                                width: 300,
-                                fit: BoxFit.cover,
-                                errorBuilder: (ctx, err, st) => const Icon(
-                                    Icons.broken_image,
-                                    size: 64,
-                                    color: Colors.grey),
+                              return ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  url,
+                                  width: 300,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (ctx, err, st) => Container(
+                                    width: 300,
+                                    color: const Color(0xFFF5F5F5),
+                                    child: const Icon(Icons.image, size: 48, color: Color(0xFFCCCCCC)),
+                                  ),
+                                ),
                               );
                             },
                           ),
@@ -184,68 +259,216 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                         Container(
                           height: 180,
                           decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
+                              color: const Color(0xFFF5F5F5),
                               borderRadius: BorderRadius.circular(12)),
                           child: const Center(
-                              child: Icon(Icons.image, size: 64, color: Colors.grey)),
+                              child: Icon(Icons.image, size: 64, color: Color(0xFFCCCCCC))),
                         ),
                       const SizedBox(height: 16),
 
                       // editable fields
                       TextField(
                         controller: _nameCtrl,
-                        decoration: const InputDecoration(labelText: 'Name'),
+                        decoration: InputDecoration(
+                          labelText: 'Name',
+                          labelStyle: const TextStyle(fontFamily: 'Onest', color: Color(0xFF999999)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFFFF4678)),
+                          ),
+                          filled: true,
+                          fillColor: const Color(0xFFF5F5F5),
+                        ),
+                        style: const TextStyle(fontFamily: 'Onest', color: Color(0xFF1a1a1a)),
                       ),
+                      const SizedBox(height: 12),
                       TextField(
                         controller: _descCtrl,
-                        decoration: const InputDecoration(labelText: 'Description'),
+                        decoration: InputDecoration(
+                          labelText: 'Description',
+                          labelStyle: const TextStyle(fontFamily: 'Onest', color: Color(0xFF999999)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFFFF4678)),
+                          ),
+                          filled: true,
+                          fillColor: const Color(0xFFF5F5F5),
+                        ),
+                        style: const TextStyle(fontFamily: 'Onest', color: Color(0xFF1a1a1a)),
                         maxLines: 3,
                       ),
+                      const SizedBox(height: 12),
                       TextField(
                         controller: _priceCtrl,
-                        decoration: const InputDecoration(labelText: 'Price'),
+                        decoration: InputDecoration(
+                          labelText: 'Price',
+                          labelStyle: const TextStyle(fontFamily: 'Onest', color: Color(0xFF999999)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFFFF4678)),
+                          ),
+                          filled: true,
+                          fillColor: const Color(0xFFF5F5F5),
+                        ),
+                        style: const TextStyle(fontFamily: 'Onest', color: Color(0xFF1a1a1a)),
                         keyboardType: TextInputType.number,
                       ),
+                      const SizedBox(height: 12),
                       TextField(
                         controller: _locationCtrl,
-                        decoration: const InputDecoration(labelText: 'Location'),
+                        decoration: InputDecoration(
+                          labelText: 'Location',
+                          labelStyle: const TextStyle(fontFamily: 'Onest', color: Color(0xFF999999)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFFFF4678)),
+                          ),
+                          filled: true,
+                          fillColor: const Color(0xFFF5F5F5),
+                        ),
+                        style: const TextStyle(fontFamily: 'Onest', color: Color(0xFF1a1a1a)),
                       ),
+                      const SizedBox(height: 12),
                       Row(
                         children: [
                           Expanded(
                             child: TextField(
                               controller: _cityCtrl,
-                              decoration: const InputDecoration(labelText: 'City'),
+                              decoration: InputDecoration(
+                                labelText: 'City',
+                                labelStyle: const TextStyle(fontFamily: 'Onest', color: Color(0xFF999999)),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: Color(0xFFFF4678)),
+                                ),
+                                filled: true,
+                                fillColor: const Color(0xFFF5F5F5),
+                              ),
+                              style: const TextStyle(fontFamily: 'Onest', color: Color(0xFF1a1a1a)),
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: TextField(
                               controller: _stateCtrl,
-                              decoration: const InputDecoration(labelText: 'State'),
+                              decoration: InputDecoration(
+                                labelText: 'State',
+                                labelStyle: const TextStyle(fontFamily: 'Onest', color: Color(0xFF999999)),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: Color(0xFFFF4678)),
+                                ),
+                                filled: true,
+                                fillColor: const Color(0xFFF5F5F5),
+                              ),
+                              style: const TextStyle(fontFamily: 'Onest', color: Color(0xFF1a1a1a)),
                             ),
                           ),
                         ],
                       ),
+                      const SizedBox(height: 12),
                       Row(
                         children: [
                           Expanded(
                             child: TextField(
                               controller: _latCtrl,
-                              decoration: const InputDecoration(labelText: 'Latitude'),
+                              decoration: InputDecoration(
+                                labelText: 'Latitude',
+                                labelStyle: const TextStyle(fontFamily: 'Onest', color: Color(0xFF999999)),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: Color(0xFFFF4678)),
+                                ),
+                                filled: true,
+                                fillColor: const Color(0xFFF5F5F5),
+                              ),
+                              style: const TextStyle(fontFamily: 'Onest', color: Color(0xFF1a1a1a)),
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: TextField(
                               controller: _lngCtrl,
-                              decoration: const InputDecoration(labelText: 'Longitude'),
+                              decoration: InputDecoration(
+                                labelText: 'Longitude',
+                                labelStyle: const TextStyle(fontFamily: 'Onest', color: Color(0xFF999999)),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: Color(0xFFFF4678)),
+                                ),
+                                filled: true,
+                                fillColor: const Color(0xFFF5F5F5),
+                              ),
+                              style: const TextStyle(fontFamily: 'Onest', color: Color(0xFF1a1a1a)),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 16),
-
                       if (_metaFields.isNotEmpty) ...[
                         const Text('Additional Details',
                             style: TextStyle(
@@ -295,7 +518,23 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
 
                       ElevatedButton(
                         onPressed: _save,
-                        child: const Text('Update'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF4678),
+                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Update',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontFamily: 'Onest',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
                     ],
                   ),

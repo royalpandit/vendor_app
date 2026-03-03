@@ -142,6 +142,22 @@ class _PhoneNumberVerifiedScreenState extends State<PhoneNumberVerifiedScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ResponsiveUtil.verticalSpace(context, 10),
+                  // Back button when in OTP phase: return to phone entry
+                  if (_otpPhase) ...[
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: const Icon(Icons.arrow_back),
+                      color: AppTheme.primaryPink,
+                      onPressed: () {
+                        setState(() {
+                          _otpPhase = false;
+                          _otpController.clear();
+                        });
+                      },
+                    ),
+                    ResponsiveUtil.verticalSpace(context, 1),
+                  ],
                   
                   // Title
                   Text(

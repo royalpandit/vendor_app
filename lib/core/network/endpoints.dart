@@ -23,6 +23,7 @@ class Endpoints {
   static const serviceDetails = '/api/service-details'; // ?id=
   static const serviceList = '/api/service-list';
   static const serviceUpdate = '/api/service-update';
+  static const serviceStatusUpdate = '/api/service-status-update';
   
   // Venues
   static const venueAdd = '/api/venues';
@@ -59,6 +60,7 @@ class Endpoints {
   
   // User
   static const deleteUser = '/api/user'; // DELETE /api/user/{id}
+  static const userDetails = '/api/users'; // GET /api/users/{id}
   
   // Help & Support
   static const contactSupport = '/api/help/contact-support';

@@ -42,39 +42,93 @@ class ServiceDetailsResponse {
   });
 
   factory ServiceDetailsResponse.fromJson(Map<String, dynamic> json) {
+    // Handle both single service and nested response formats
+    var data = json['service'] ?? json['venue'] ?? json;
+    
+    // If data has a 'details' object (for venues), merge it with the main data
+    if (data is Map<String, dynamic> && data['details'] != null && data['details'] is Map) {
+      final details = data['details'] as Map<String, dynamic>;
+      // Create a merged map with details fields taking precedence
+      data = {
+        ...data,
+        ...details,
+        'details': details, // Keep original details ref if needed
+      };
+    }
+    
     return ServiceDetailsResponse(
-      id: json['id'] ?? 0,
-      vendorId: json['vendor_id'] ?? 0,
-      subCategoryId: json['sub_category_id'] ?? 0,
-      name: json['name'] ?? '',
-      description: json['description'],
-      basePrice: (() {
-        final v = json['base_price'];
-        if (v == null) return 0.0;
-        if (v is num) return v.toDouble();
-        return double.tryParse(v.toString()) ?? 0.0;
-      })(),
-      priceType: json['price_type'] ?? 'fixed',
-      location: json['location'] ?? '',
-      status: json['status'] ?? false,
-      verify: json['verify'] ?? 0,
-      latitude: json['latitude'],
-      longitude: json['longitude'],
-      city: json['city'],
-      state: json['state'],
-      type: json['type'] ?? 'service',
-      images: (json['images'] as List?)
-              ?.map((e) => ServiceImage.fromJson(e))
-              .toList() ??
-          [],
-      vendor: json['vendor'] != null ? VendorInfo.fromJson(json['vendor']) : null,
-      subcategory: json['subcategory'] != null
-          ? SubcategoryInfo.fromJson(json['subcategory'])
+      id: _safeInt(data['id']),
+      vendorId: _safeInt(data['vendor_id']),
+      subCategoryId: _safeInt(data['sub_category_id']),
+      name: _safeString(data['name']),
+      description: _safeStringNullable(data['description']),
+      basePrice: _safeDouble(data['base_price']),
+      priceType: _safeString(data['price_type']),
+      location: _safeString(data['location'] ?? data['address'] ?? ''),
+      status: _safeBool(data['status']),
+      verify: _safeInt(data['verify']),
+      latitude: _safeStringNullable(data['latitude']),
+      longitude: _safeStringNullable(data['longitude']),
+      city: _safeStringNullable(data['city']),
+      state: _safeStringNullable(data['state']),
+      type: _safeString(data['type'] ?? 'service'),
+      images: _safeImageList(data['images'] ?? data['portfolio_images']),
+      vendor: data['vendor'] != null ? VendorInfo.fromJson(data['vendor']) : null,
+      subcategory: data['subcategory'] != null
+          ? SubcategoryInfo.fromJson(data['subcategory'])
           : null,
-      meta: json['meta'] != null && json['meta'] is Map
-          ? (json['meta'] as Map).cast<String, dynamic>()
-          : null,
+      meta: _safeCastMeta(data['meta']),
     );
+  }
+
+  // Safe type conversion helpers
+  static int _safeInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  static String _safeString(dynamic value) {
+    if (value == null) return '';
+    if (value is String) return value;
+    return value.toString();
+  }
+
+  static String? _safeStringNullable(dynamic value) {
+    if (value == null || (value is String && value.isEmpty)) return null;
+    if (value is String) return value;
+    return value.toString();
+  }
+
+  static double _safeDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
+
+  static bool _safeBool(dynamic value) {
+    if (value == null) return false;
+    if (value is bool) return value;
+    if (value is int) return value != 0;
+    if (value is String) return value.toLowerCase() == 'true' || value == '1';
+    return false;
+  }
+
+  static List<ServiceImage> _safeImageList(dynamic images) {
+    if (images == null) return [];
+    if (images is! List) return [];
+    try {
+      return images
+          .map((e) => e is Map<String, dynamic> ? ServiceImage.fromJson(e) : null)
+          .whereType<ServiceImage>()
+          .toList();
+    } catch (e) {
+      return [];
+    }
   }
 }
 
@@ -96,13 +150,24 @@ class ServiceImage {
   });
 
   factory ServiceImage.fromJson(Map<String, dynamic> json) {
+    String getFullImageUrl(String? url) {
+      if (url == null || url.isEmpty) return '';
+      if (url.startsWith('http')) return url;
+      // Convert relative path to full URL
+      return 'https://sevenoath.shofus.com/storage/$url';
+    }
+
     return ServiceImage(
-      id: json['id'] ?? 0,
-      serviceId: json['service_id'] ?? 0,
-      imagePath: json['image_path'] ?? '',
-      isPrimary: json['is_primary'] ?? false,
-      position: json['position'] ?? 0,
-      imageUrl: json['image_url'] ?? '',
+      id: ServiceDetailsResponse._safeInt(json['id']),
+      serviceId: ServiceDetailsResponse._safeInt(json['service_id'] ?? json['venue_id']),
+      imagePath: ServiceDetailsResponse._safeString(json['image_path']),
+      isPrimary: ServiceDetailsResponse._safeBool(json['is_primary']),
+      position: ServiceDetailsResponse._safeInt(json['position']),
+      imageUrl: getFullImageUrl(
+        ServiceDetailsResponse._safeStringNullable(
+          json['image_url'] ?? json['image_path'],
+        ),
+      ),
     );
   }
 }
@@ -118,8 +183,8 @@ class VendorInfo {
 
   factory VendorInfo.fromJson(Map<String, dynamic> json) {
     return VendorInfo(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
+      id: ServiceDetailsResponse._safeInt(json['id']),
+      name: ServiceDetailsResponse._safeString(json['name']),
     );
   }
 }
@@ -135,8 +200,33 @@ class SubcategoryInfo {
 
   factory SubcategoryInfo.fromJson(Map<String, dynamic> json) {
     return SubcategoryInfo(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
+      id: ServiceDetailsResponse._safeInt(json['id']),
+      name: ServiceDetailsResponse._safeString(json['name']),
     );
   }
+}
+
+// Helper function to safely cast meta field to Map<String, dynamic>
+Map<String, dynamic>? _safeCastMeta(dynamic meta) {
+  if (meta == null) return null;
+  
+  if (meta is Map<String, dynamic>) {
+    return meta;
+  }
+  
+  if (meta is Map) {
+    try {
+      final result = <String, dynamic>{};
+      meta.forEach((key, value) {
+        if (key is String) {
+          result[key] = value;
+        }
+      });
+      return result.isEmpty ? null : result;
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  return null;
 }

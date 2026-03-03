@@ -55,7 +55,10 @@ Dio buildDio({bool enableLogs = true}) {
           options.extra['ts'] = DateTime.now().millisecondsSinceEpoch;
 
           final maskedHeaders = _maskedHeaders(options.headers);
-          debugPrint('➡️ [REQ #${options.extra['reqId']}] ${options.method} ${options.uri}');
+          final _reqId = options.extra['reqId'] ?? '-';
+          final _method = options.method;
+          final _uri = options.uri;
+          debugPrint('➡️ [REQ #$_reqId] $_method $_uri');
           if (options.queryParameters.isNotEmpty) {
             debugPrint('   └─ query: ${options.queryParameters}');
           }
@@ -70,16 +73,19 @@ Dio buildDio({bool enableLogs = true}) {
 
       onResponse: (response, handler) {
         if (enableLogs && kDebugMode) {
-          final id = response.requestOptions.extra['reqId'] ?? '-';
-          final started = response.requestOptions.extra['ts'] as int?;
+            final id = response.requestOptions.extra['reqId'] ?? '-';
+            final started = response.requestOptions.extra['ts'] as int?;
           final took = started == null
               ? ''
               : ' (${DateTime.now().millisecondsSinceEpoch - started} ms)';
 
-          debugPrint('✅ [RES #$id]${took}');
-          debugPrint('   └─ ${response.requestOptions.method} ${response.requestOptions.uri}');
-          debugPrint('   └─ status: ${response.statusCode}');
-          debugPrint('   └─ data: ${_preview(response.data)}');
+            final _resMethod = response.requestOptions.method;
+            final _resUri = response.requestOptions.uri;
+
+            debugPrint('✅ [RES #$id]$took');
+            debugPrint('   └─ $_resMethod $_resUri');
+            debugPrint('   └─ status: ${response.statusCode}');
+            debugPrint('   └─ data: ${_preview(response.data)}');
         }
         handler.next(response);
       },
@@ -92,8 +98,11 @@ Dio buildDio({bool enableLogs = true}) {
               ? ''
               : ' (${DateTime.now().millisecondsSinceEpoch - started} ms)';
 
-          debugPrint('❌ [ERR #$id]${took}');
-          debugPrint('   └─ ${e.requestOptions.method} ${e.requestOptions.uri}');
+          final _errMethod = e.requestOptions.method;
+          final _errUri = e.requestOptions.uri;
+
+          debugPrint('❌ [ERR #$id]$took');
+          debugPrint('   └─ $_errMethod $_errUri');
           debugPrint('   └─ error: ${e.message}');
           if (e.response != null) {
             debugPrint('   └─ status: ${e.response?.statusCode}');

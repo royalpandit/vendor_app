@@ -359,9 +359,9 @@ class AuthRepository {
 
   // ---------- SERVICE OPERATIONS ----------
 
-  Future<ApiResult<BaseResponse<ServiceDetailsResponse>>> getServiceDetails(int serviceId) async {
+  Future<ApiResult<BaseResponse<ServiceDetailsResponse>>> getServiceDetails(int serviceId, {int? vendorId}) async {
     try {
-      final res = await api.getServiceDetails(serviceId);
+      final res = await api.getServiceDetails(serviceId, vendorId: vendorId);
       return ApiSuccess(res);
     } on ApiException catch (e) {
       return ApiFailure(e.message, statusCode: e.statusCode);
@@ -396,6 +396,18 @@ class AuthRepository {
   Future<ApiResult<BaseResponse<Map<String, dynamic>>>> updateService(Map<String, dynamic> data) async {
     try {
       final res = await api.updateService(data);
+      return ApiSuccess(res);
+    } on ApiException catch (e) {
+      return ApiFailure(e.message, statusCode: e.statusCode);
+    } catch (e) {
+      return ApiFailure(e.toString());
+    }
+  }
+
+  Future<ApiResult<BaseResponse<Map<String, dynamic>>>> updateServiceStatus(
+      int serviceId, String status) async {
+    try {
+      final res = await api.updateServiceStatus(serviceId, status);
       return ApiSuccess(res);
     } on ApiException catch (e) {
       return ApiFailure(e.message, statusCode: e.statusCode);
@@ -545,6 +557,17 @@ class AuthRepository {
   Future<ApiResult<BaseResponse<Object?>>> deleteUser(int userId) async {
     try {
       final res = await api.deleteUser(userId);
+      return ApiSuccess(res);
+    } on ApiException catch (e) {
+      return ApiFailure(e.message, statusCode: e.statusCode);
+    } catch (e) {
+      return ApiFailure(e.toString());
+    }
+  }
+
+  Future<ApiResult<BaseResponse<Map<String, dynamic>>>> getUser(int userId) async {
+    try {
+      final res = await api.getUser(userId);
       return ApiSuccess(res);
     } on ApiException catch (e) {
       return ApiFailure(e.message, statusCode: e.statusCode);

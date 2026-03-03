@@ -4,12 +4,14 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:vendor_app/core/network/token_storage.dart';
 import 'package:vendor_app/core/utils/app_theme.dart';
+import 'package:vendor_app/core/utils/responsive_util.dart';
 import 'package:vendor_app/core/utils/custom_bottom_navigation.dart';
 import 'package:vendor_app/core/utils/skeleton_loader.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
 import 'package:vendor_app/features/chat/presentation/screens/chat_screen.dart';
 import 'package:vendor_app/core/utils/app_message.dart';
 import 'package:vendor_app/core/utils/result_popup.dart';
+import 'package:vendor_app/features/booking/presentation/widgets/booking_details_bottom_sheet.dart';
 
 class BookingScreen extends StatefulWidget {
   final int currentIndex;
@@ -36,8 +38,15 @@ class _BookingScreenState extends State<BookingScreen> {
       });
     });
     _fetchUserIdAndBookings();
+<<<<<<< Updated upstream
     // Refresh data every 10 seconds
 
+=======
+    // Refresh bookings periodically (less frequent to avoid jank)
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+      await _refreshBookingsOnly();
+    });
+>>>>>>> Stashed changes
   }
 
   @override
@@ -62,12 +71,23 @@ class _BookingScreenState extends State<BookingScreen> {
 
     if (userId != 0) {
       final authProvider = context.read<AuthProvider>();
-      authProvider.fetchVendorDetails(userId);  // Fetch vendor details
-      authProvider.fetchVendorDashboard(userId);  // Fetch dashboard data
-      authProvider.fetchActiveBookings(userId);  // Fetch active bookings
+      // Do one-time heavier fetches once on init
+      unawaited(authProvider.fetchVendorDetails(userId));
+      unawaited(authProvider.fetchVendorDashboard(userId));
+      // Fetch bookings immediately (await so UI shows data as soon as available)
+      await authProvider.fetchAllBookings(userId);
     } else {
       // Handle case where userId is not found or user is not logged in
       // silently ignore
+    }
+  }
+
+  Future<void> _refreshBookingsOnly() async {
+    final userData = await TokenStorage.getUserData();
+    final int userId = userData?.id ?? 0;
+    if (userId != 0) {
+      final authProvider = context.read<AuthProvider>();
+      await authProvider.fetchAllBookings(userId);
     }
   }
 
@@ -94,7 +114,7 @@ class _BookingScreenState extends State<BookingScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(height: 16),
+                      ResponsiveUtil.verticalSpace(context, 3),
                       Consumer<AuthProvider>(
                         builder: (context, authProvider, child) {
                           return Text(
@@ -109,7 +129,7 @@ class _BookingScreenState extends State<BookingScreen> {
                           );
                         },
                       ),
-                      SizedBox(height: 8),
+                      ResponsiveUtil.verticalSpace(context, 1),
                       Consumer<AuthProvider>(
                         builder: (context, authProvider, child) {
                           return Text(
@@ -123,7 +143,8 @@ class _BookingScreenState extends State<BookingScreen> {
                           );
                         },
                       ),
-                      SizedBox(height: 24),
+                      ResponsiveUtil.verticalSpace(context, 3),
+                      const SizedBox(height: 12),
                       // Search Bar
                       Row(
                         children: [
@@ -222,7 +243,7 @@ class _BookingScreenState extends State<BookingScreen> {
                         if (authProvider.activeBookingsModels.isEmpty) {
                           return Center(
                             child: Text(
-                              'No active bookings available.',
+                              'No bookings available.',
                               style: AppTheme.bodyRegular.copyWith(
                                 color: AppTheme.gray,
                               ),
@@ -270,7 +291,7 @@ class _BookingScreenState extends State<BookingScreen> {
                         if (filtered.isEmpty) {
                           return Center(
                             child: Text(
-                              'No active bookings available.',
+                              'No bookings available.',
                               style: AppTheme.bodyRegular.copyWith(
                                 color: AppTheme.gray,
                               ),
@@ -364,19 +385,7 @@ class _BookingScreenState extends State<BookingScreen> {
   }) {
     return GestureDetector(
       onTap: () {
-        _showBookingDetailsBottomSheet(
-          context,
-          bookingId,
-          clientName,
-          service,
-          budget,
-          date,
-          location,
-          status,
-          userId,
-          userImage,
-          vendorId,
-        );
+        showBookingDetailsBottomSheet(context, bookingId);
       },
       child: Container(
       padding: const EdgeInsets.all(12),
@@ -993,7 +1002,7 @@ class _BookingScreenState extends State<BookingScreen> {
                             if (mounted) ResultPopup.show(context, success: true, message: "Booking accepted");
                             final user = await TokenStorage.getUserData();
                             if (user?.id != null && mounted) {
-                              provider.fetchActiveBookings(user!.id!);
+                              provider.fetchAllBookings(user!.id!);
                             }
                           } else {
                             if (mounted) ResultPopup.show(context, success: false, message: provider.message ?? "Failed");
@@ -1065,7 +1074,7 @@ class _BookingScreenState extends State<BookingScreen> {
                                       if (mounted) ResultPopup.show(context, success: true, message: "Booking cancelled");
                                       final user = await TokenStorage.getUserData();
                                       if (user?.id != null && mounted) {
-                                        provider.fetchActiveBookings(user!.id!);
+                                        provider.fetchAllBookings(user!.id!);
                                       }
                                     } else {
                                       if (mounted) ResultPopup.show(context, success: false, message: provider.message ?? "Failed");
@@ -1191,7 +1200,7 @@ class _BookingScreenState extends State<BookingScreen> {
                                   if (mounted) ResultPopup.show(context, success: true, message: "Booking marked as completed");
                                   final user = await TokenStorage.getUserData();
                                   if (user?.id != null) {
-                                    provider.fetchActiveBookings(user!.id!);
+                                    provider.fetchAllBookings(user!.id!);
                                   }
                                 } else {
                                   if (mounted) ResultPopup.show(context, success: false, message: provider.message ?? "Failed");

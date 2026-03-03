@@ -307,8 +307,8 @@ class _InboxScreenState extends State<InboxScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Builder(
                           builder: (context) {
-                            // Filter messages based on current tab
-                            final filteredMessages = currentTab == 'Unread'
+                            // Filter messages based on current tab and remove duplicates by conversation ID
+                            List<InboxResponse> filtered = currentTab == 'Unread'
                                 ? messages.where((data) {
                                     final hasUnread =
                                         data.lastMessage.senderId != userId &&
@@ -316,6 +316,15 @@ class _InboxScreenState extends State<InboxScreen> {
                                     return hasUnread;
                                   }).toList()
                                 : messages;
+                            
+                            // Remove duplicates by conversation ID - keep only the first occurrence
+                            final seen = <int>{};
+                            final filteredMessages = <InboxResponse>[];
+                            for (final item in filtered) {
+                              if (seen.add(item.id)) {
+                                filteredMessages.add(item);
+                              }
+                            }
 
                             if (filteredMessages.isEmpty) {
                               return Center(
@@ -355,8 +364,50 @@ class _InboxScreenState extends State<InboxScreen> {
 
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 12),
-                                  child: GestureDetector(
-                                    onTap: () async {
+                                  child: Dismissible(
+                                    key: Key('conv_${data.id}'),
+                                    direction: DismissDirection.endToStart,
+                                    background: Container(
+                                      alignment: Alignment.centerRight,
+                                      padding: const EdgeInsets.only(right: 16),
+                                      decoration: ShapeDecoration(
+                                        color: const Color(0xFFFF4678),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                      child: const Icon(Icons.delete, color: Colors.white, size: 24),
+                                    ),
+                                    confirmDismiss: (direction) async {
+                                      final confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: const Text('Delete Conversation'),
+                                          content: const Text('Are you sure you want to delete this conversation?'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(context, false),
+                                              child: const Text('Cancel'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(context, true),
+                                              child: const Text('Delete', style: TextStyle(color: Color(0xFFFF4678))),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      return confirm ?? false;
+                                    },
+                                    onDismissed: (direction) async {
+                                      final prov = Provider.of<AuthProvider>(context, listen: false);
+                                      await prov.deleteConversation(data.id);
+                                      if (mounted) {
+                                        AppMessage.show(context, 'Conversation deleted');
+                                        await prov.fetchInboxMessages(userId);
+                                      }
+                                    },
+                                    child: GestureDetector(
+                                      onTap: () async {
                                       // Only mark as read if there are actually unread messages
                                       if (hasUnreadMessages) {
                                         final prov = Provider.of<AuthProvider>(
@@ -396,11 +447,11 @@ class _InboxScreenState extends State<InboxScreen> {
                                           'Conversation deleted',
                                         );
                                       }
-                                    },
-                                    child: Container(
+                                      },
+                                      child: Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 16,
-                                        vertical: 12,
+                                        vertical: 10,
                                       ),
                                       decoration: ShapeDecoration(
                                         color: hasUnreadMessages
@@ -445,11 +496,10 @@ class _InboxScreenState extends State<InboxScreen> {
                                           SizedBox(width: 16),
                                           // Message Content
                                           Expanded(
-                                            child: Container(
-                                              height: 70,
-                                              child: Column(
+                                            child: Column(
                                                 mainAxisAlignment:
-                                                    MainAxisAlignment.center,
+                                                    MainAxisAlignment.start,
+                                                mainAxisSize: MainAxisSize.min,
                                                 crossAxisAlignment:
                                                     CrossAxisAlignment.start,
                                                 children: [
@@ -465,6 +515,8 @@ class _InboxScreenState extends State<InboxScreen> {
                                                       Expanded(
                                                         child: Text(
                                                           otherPersonName,
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow.ellipsis,
                                                           style: TextStyle(
                                                             color: const Color(
                                                               0xFF171719,
@@ -547,9 +599,9 @@ class _InboxScreenState extends State<InboxScreen> {
                                                 ],
                                               ),
                                             ),
-                                          ),
                                         ],
                                       ),
+                                    ),
                                     ),
                                   ),
                                 );

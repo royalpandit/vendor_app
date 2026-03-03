@@ -16,6 +16,8 @@ import 'package:vendor_app/features/profile/data/models/resposne/service_meta_fi
 import 'package:vendor_app/core/utils/app_message.dart';
 import 'package:vendor_app/core/utils/result_popup.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
+import 'package:vendor_app/core/utils/confirm_dialog.dart';
+import 'package:vendor_app/features/profile/presentation/screens/profile_screen.dart';
 import 'package:vendor_app/features/profile/data/models/request/service_add_request.dart';
 import 'package:vendor_app/features/profile/data/models/request/venue_create_request.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/amenity_model_response.dart';
@@ -87,6 +89,7 @@ class _ManageServiceDetailsScreenState
 
   Future<void> _initializeData() async {
     await Future.wait([
+      _loadVendorDetails(),
       _loadAmenities(),
       _loadStates(),
       _prefillLocationFromGPS(),
@@ -106,8 +109,23 @@ class _ManageServiceDetailsScreenState
     final cats = prov.categories;
     if (cats.isEmpty) return;
 
-    // If we have a subcategory ID from the vendor profile, find its parent category
+    // Fast path: widget.subCategoryId may actually be a parent category id
     if (widget.subCategoryId > 0) {
+      final direct = cats.where((c) => c.id == widget.subCategoryId).firstOrNull;
+      if (direct != null) {
+        if (!mounted) return;
+        setState(() {
+          _selectedCategoryId = direct.id;
+          _selectedCategoryName = direct.name;
+          categoryController.text = direct.name;
+          _isVenue = direct.name.trim().toLowerCase() == 'venue';
+        });
+        // fetch only this category's subcategories (fast)
+        await prov.fetchSubcategories(direct.id);
+        return;
+      }
+
+      // Fallback: the id might be a subcategory id; iterate categories and check their sublists
       for (final cat in cats) {
         await prov.fetchSubcategories(cat.id);
         final subs = prov.subcategories;
@@ -120,7 +138,6 @@ class _ManageServiceDetailsScreenState
             categoryController.text = cat.name;
             _isVenue = cat.name.trim().toLowerCase() == 'venue';
           });
-          // Subcategories are already fetched for this category
           return;
         }
       }
@@ -162,6 +179,18 @@ class _ManageServiceDetailsScreenState
     final p = context.read<AuthProvider>();
     await p.fetchAmenities();
     if (mounted) setState(() => _allAmenities = p.amenities);
+  }
+
+  Future<void> _loadVendorDetails() async {
+    try {
+      final user = await TokenStorage.getUserData();
+      if (user == null) return;
+      
+      final prov = context.read<AuthProvider>();
+      await prov.fetchVendorDetails(user.id!);
+    } catch (e) {
+      // Log error silently, vendor details are optional for service creation
+    }
   }
 
   Future<void> _loadStates() async {
@@ -385,7 +414,12 @@ class _ManageServiceDetailsScreenState
         if (mounted) {
           await ResultPopup.show(context, success: ok, message: vmsg);
         }
-        if (ok && mounted) Navigator.pop(context);
+        if (ok && mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => ProfileScreen(currentIndex: 3)),
+          );
+        }
       } else {
         // Create service request
         final priceNum = num.tryParse(priceController.text.trim()) ?? 0;
@@ -434,7 +468,12 @@ class _ManageServiceDetailsScreenState
         if (mounted) {
           await ResultPopup.show(context, success: ok, message: msg);
         }
-        if (ok && mounted) Navigator.pop(context);
+        if (ok && mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => ProfileScreen(currentIndex: 3)),
+          );
+        }
       }
     } catch (e) {
       _showMsg('Error: $e');
@@ -512,18 +551,12 @@ class _ManageServiceDetailsScreenState
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: const Color(0xFFDBE2EA)),
                           ),
-                          child: Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.category_outlined, color: Color(0xFFFF4678), size: 20),
-                              const SizedBox(width: 10),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Category', style: TextStyle(color: Color(0xFF746E85), fontSize: 12, fontFamily: 'Onest', fontWeight: FontWeight.w400)),
-                                  const SizedBox(height: 2),
-                                  Text(_selectedCategoryName!, style: TextStyle(color: Colors.black, fontSize: 15, fontFamily: 'Onest', fontWeight: FontWeight.w500)),
-                                ],
-                              ),
+                              Text('Category', style: TextStyle(color: Color(0xFF746E85), fontSize: 12, fontFamily: 'Onest', fontWeight: FontWeight.w400)),
+                              const SizedBox(height: 6),
+                              Text(_selectedCategoryName!, style: TextStyle(color: Colors.black, fontSize: 15, fontFamily: 'Onest', fontWeight: FontWeight.w500)),
                             ],
                           ),
                         ),
@@ -780,7 +813,7 @@ class _ManageServiceDetailsScreenState
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton(
-                    onPressed: _saving ? null : _submitForm,
+                    onPressed: _saving ? null : _confirmSubmit,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFF4678),
                       shape: RoundedRectangleBorder(
@@ -817,11 +850,26 @@ class _ManageServiceDetailsScreenState
     );
   }
 
+  /// Show confirmation dialog before submitting the form.
+  void _confirmSubmit() async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Confirm',
+      message: 'Do you want to save changes?',
+      confirmText: 'Save',
+      cancelText: 'Cancel',
+    );
+
+    if (confirmed == true) {
+      _submitForm();
+    }
+  }
+
   Widget _buildAppBar() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(color: Colors.white),
+      decoration: const BoxDecoration(color: Color(0xFFF5F5F5)),
       child: Row(
         children: [
           GestureDetector(
@@ -830,6 +878,7 @@ class _ManageServiceDetailsScreenState
               'assets/icons/arrow-left.png',
               width: 24,
               height: 24,
+              color: const Color(0xFF666666),
             ),
           ),
           const Expanded(
@@ -837,10 +886,10 @@ class _ManageServiceDetailsScreenState
               'Manage Service Details',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.black,
+                color: Color(0xFF1a1a1a),
                 fontSize: 17,
                 fontFamily: 'Onest',
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:vendor_app/core/network/token_storage.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
 import 'package:vendor_app/core/utils/app_message.dart';
+import 'package:vendor_app/features/booking/presentation/widgets/booking_details_bottom_sheet.dart';
 
 
 class NewLeadsScreen extends StatefulWidget {
@@ -212,13 +213,16 @@ class _NewLeadsScreenState extends State<NewLeadsScreen> {
                                         final lead = filtered[index];
                                         return Padding(
                                           padding: const EdgeInsets.only(bottom: 12),
-                                          child: _buildLeadCard(
-                                            bookingId: lead.id,
-                                            name: lead.user.name,
-                                            email: lead.user.email ?? 'No email',
-                                            budget: lead.budget,
-                                            date: lead.eventDate,
-                                            location: lead.address,
+                                          child: GestureDetector(
+                                            onTap: () => showBookingDetailsBottomSheet(context, lead.id),
+                                            child: _buildLeadCard(
+                                              bookingId: lead.id,
+                                              name: lead.user.name,
+                                              email: lead.user.email ?? 'No email',
+                                              budget: lead.budget,
+                                              date: lead.eventDate,
+                                              location: lead.address,
+                                            ),
                                           ),
                                         );
                                       },

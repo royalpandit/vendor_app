@@ -192,7 +192,7 @@ class AuthApi {
   Future<BaseResponse<List<ActiveBookingModel>>> getActiveBookings(int userId) async {
     try {
       final response = await _dio.get(
-        Endpoints.vendorBookings,  // Endpoint to fetch active bookings
+        Endpoints.vendorBookings, // Endpoint to fetch active bookings
         queryParameters: {'user_id': userId}, // Send user_id as query parameter
       );
 
@@ -201,9 +201,8 @@ class AuthApi {
         // Ensure the response data is parsed as a list of ActiveBookingModel
         var bookings = json as List;
         return bookings.map((e) => ActiveBookingModel.fromJson(e as Map<String, dynamic>)).toList();
-
-       });
-    } on DioError catch (dioErr) {
+      });
+    } on DioException catch (dioErr) {
       // treat 404 as empty list rather than error
       if (dioErr.response?.statusCode == 404) {
         return BaseResponse<List<ActiveBookingModel>>(
@@ -213,7 +212,7 @@ class AuthApi {
           data: [],
         );
       }
-      throw ApiException('Failed to fetch active bookings: $dioErr');
+      throw ApiException('Failed to fetch active bookings: ${dioErr.message}', statusCode: dioErr.response?.statusCode);
     } catch (e) {
       throw ApiException('Failed to fetch active bookings: $e');
     }
@@ -464,16 +463,21 @@ class AuthApi {
   }
 
   /// GET /api/service-details?id={service_id}
-  Future<BaseResponse<ServiceDetailsResponse>> getServiceDetails(int serviceId) async {
+  Future<BaseResponse<ServiceDetailsResponse>> getServiceDetails(int serviceId, {int? vendorId}) async {
+    final queryParams = {'id': serviceId};
+    if (vendorId != null) {
+      queryParams['vendor_id'] = vendorId;
+    }
     final res = await _dio.get(
       Endpoints.serviceDetails,
-      queryParameters: {'id': serviceId},
+      queryParameters: queryParams,
     );
     final decoded = res.data;
 
     return BaseResponse.fromJson(decoded, (json) {
-      // json contains 'service' key
-      final serviceData = (json as Map)['service'] as Map<String, dynamic>;
+      // json contains 'service' or 'venue' key
+      final jsonMap = json as Map<String, dynamic>;
+      final serviceData = (jsonMap['service'] ?? jsonMap['venue']) as Map<String, dynamic>;
       return ServiceDetailsResponse.fromJson(serviceData);
     });
   }
@@ -511,6 +515,20 @@ class AuthApi {
     final res = await _dio.post(
       Endpoints.serviceUpdate,
       data: data,
+    );
+    final decoded = res.data;
+
+    return BaseResponse.fromJson(decoded, (json) {
+      return json as Map<String, dynamic>;
+    });
+  }
+
+  /// POST /api/service-status-update
+  Future<BaseResponse<Map<String, dynamic>>> updateServiceStatus(
+      int serviceId, String status) async {
+    final res = await _dio.post(
+      Endpoints.serviceStatusUpdate,
+      data: {'service_id': serviceId, 'status': status},
     );
     final decoded = res.data;
 
@@ -624,6 +642,20 @@ class AuthApi {
     final decoded = res.data;
 
     return BaseResponse.fromJson(decoded, (json) => json);
+  }
+
+  /// GET /api/users/{id}
+  Future<BaseResponse<Map<String, dynamic>>> getUser(int userId) async {
+    final res = await _dio.get('${Endpoints.userDetails}/$userId');
+    final decoded = res.data;
+
+    return BaseResponse.fromJson(decoded, (json) {
+      // Response might have {data: {user: {...}}} or {data: {...}}
+      if (json is Map && json.containsKey('user')) {
+        return (json['user'] as Map).cast<String, dynamic>();
+      }
+      return (json as Map).cast<String, dynamic>();
+    });
   }
 
   /// POST /api/bookings

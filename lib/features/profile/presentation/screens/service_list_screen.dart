@@ -25,9 +25,52 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
     setState(() { _loading = true; });
     final user = await TokenStorage.getUserData();
     final prov = context.read<AuthProvider>();
-    final data = await prov.fetchServiceList(vendorId: user?.id, perPage: 50);
-    final servicesObj = data?['services'] as Map<String, dynamic>?;
-    final list = servicesObj != null ? (servicesObj['data'] as List? ?? []) : [];
+    // Try fetching both 'service' and 'venue' types and normalize responses.
+    final combined = <dynamic>[];
+
+    Future<List<dynamic>> _extractList(Map<String, dynamic>? data) async {
+      if (data == null) return [];
+      // Common shapes:
+      // 1) { 'services': { 'data': [...] } }
+      // 2) { 'services': [...] }
+      // 3) { 'data': [...] }
+      // 4) { 'venues': { 'data': [...] } }
+      if (data['services'] is Map) {
+        return List<dynamic>.from((data['services']['data'] as List? ?? []));
+      }
+      if (data['services'] is List) {
+        return List<dynamic>.from(data['services'] as List);
+      }
+      if (data['venues'] is Map) {
+        return List<dynamic>.from((data['venues']['data'] as List? ?? []));
+      }
+      if (data['venues'] is List) {
+        return List<dynamic>.from(data['venues'] as List);
+      }
+      if (data['data'] is List) {
+        return List<dynamic>.from(data['data'] as List);
+      }
+      // Fallback: scan for first List value and return it
+      for (final v in data.values) {
+        if (v is List) return List<dynamic>.from(v);
+        if (v is Map && v['data'] is List) return List<dynamic>.from(v['data'] as List);
+      }
+      return [];
+    }
+
+    try {
+      final svc = await prov.fetchServiceList(type: 'service', vendorId: user?.id, perPage: 50);
+      final list1 = await _extractList(svc);
+      combined.addAll(list1);
+
+      final ven = await prov.fetchServiceList(type: 'venue', vendorId: user?.id, perPage: 50);
+      final list2 = await _extractList(ven);
+      combined.addAll(list2);
+    } catch (e) {
+      // ignore and continue with whatever we have
+    }
+
+    final list = combined;
     setState(() {
       _items = list;
       _loading = false;
@@ -37,46 +80,173 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('My Services')),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Image.asset(
+              'assets/icons/arrow-left.png',
+              width: 24,
+              height: 24,
+              color: const Color(0xFF666666),
+            ),
+          ),
+        ),
+        title: const Text(
+          'My Services',
+          style: TextStyle(
+            fontSize: 18,
+            fontFamily: 'Onest',
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1a1a1a),
+          ),
+        ),
+        centerTitle: false,
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _items.isEmpty
-              ? const Center(child: Text('No services found'))
-              : ListView.separated(
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.inbox, size: 64, color: Color(0xFFCCCCCC)),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'No services found',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontFamily: 'Onest',
+                          color: Color(0xFF999999),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
                   itemCount: _items.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   itemBuilder: (context, index) {
                     final item = _items[index] as Map<String, dynamic>;
                     final title = item['name'] ?? item['title'] ?? 'Service';
                     final subtitle = item['city'] ?? item['description'] ?? '';
                     final image = item['primary_image_url'] ?? item['profile_image'];
-                    return ListTile(
-                      leading: SizedBox(
-                        width: 56,
-                        height: 56,
-                        child: Builder(builder: (context) {
-                          if (image == null || image.contains('default-service.jpg')) {
-                            return const Icon(Icons.broken_image, size: 24, color: Colors.grey);
-                          }
-                          return ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: Image.network(
-                              image,
-                              width: 56,
-                              height: 56,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stack) =>
-                                  const Icon(Icons.broken_image, size: 24, color: Colors.grey),
+                    final id = item['id'] is int ? item['id'] as int : int.tryParse('${item['id']}') ?? 0;
+                    
+                    return GestureDetector(
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ServiceDetailsScreen(serviceId: id))),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: ShapeDecoration(
+                          color: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            side: const BorderSide(
+                              width: 1,
+                              color: Color(0xFFE0E0E0),
                             ),
-                          );
-                        }),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          shadows: [
+                            BoxShadow(
+                              color: const Color(0xFF000000).withOpacity(0.04),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                              spreadRadius: 0,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 80,
+                              height: 80,
+                              child: Builder(builder: (context) {
+                                if (image == null || image.contains('default-service.jpg')) {
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF5F5F5),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(Icons.image, size: 32, color: Color(0xFFCCCCCC)),
+                                  );
+                                }
+                                return ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.network(
+                                    image,
+                                    width: 80,
+                                    height: 80,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stack) => Container(
+                                      color: const Color(0xFFF5F5F5),
+                                      child: const Icon(Icons.image, size: 32, color: Color(0xFFCCCCCC)),
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontFamily: 'Onest',
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF1a1a1a),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    subtitle,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontFamily: 'Onest',
+                                      color: Color(0xFF999999),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                GestureDetector(
+                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ServiceDetailsScreen(serviceId: id))),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF5F5F5),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Image.asset(
+                                      'assets/icons/edit_icon.png',
+                                      width: 20,
+                                      height: 20,
+                                      color: const Color(0xFFFF4678),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                      title: Text(title),
-                      subtitle: Text(subtitle),
-                      onTap: () {
-                        final id = item['id'] is int ? item['id'] as int : int.tryParse('${item['id']}') ?? 0;
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => ServiceDetailsScreen(serviceId: id)));
-                      },
                     );
                   },
                 ),

@@ -4,7 +4,9 @@ import 'package:vendor_app/core/network/token_storage.dart';
 import 'package:provider/provider.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
 import 'package:vendor_app/core/utils/result_popup.dart';
+import 'package:vendor_app/core/utils/app_message.dart';
 import 'package:vendor_app/features/chat/presentation/screens/chat_screen.dart';
+import 'package:vendor_app/features/booking/presentation/widgets/booking_details_bottom_sheet.dart';
 
 class ActiveBookingsScreen extends StatefulWidget {
   @override
@@ -241,16 +243,7 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
   }) {
     return GestureDetector(
       onTap: () {
-        _showCompleteBottomSheet(
-          context,
-          bookingId,
-          clientName,
-          service,
-          budget,
-          date,
-          location,
-          status,
-        );
+        showBookingDetailsBottomSheet(context, bookingId);
       },
       child: Container(
         margin: EdgeInsets.only(bottom: 12),
@@ -438,6 +431,32 @@ class _ActiveBookingsScreenState extends State<ActiveBookingsScreen> {
                           break;
                         }
                       }
+                      
+                      // If no existing conversation, create one with a Hi message
+                      if (conversationId == 0) {
+                        final created = await authProvider.sendMessage(
+                          senderId: vendorId,
+                          receiverId: userId,
+                          messageText: 'Hi',
+                        );
+
+                        if (!created) {
+                          if (mounted) AppMessage.show(context, authProvider.message ?? 'Could not create conversation');
+                          return;
+                        }
+
+                        await authProvider.fetchInboxMessages(vendorId);
+                        for (var conversation in authProvider.inboxMessages) {
+                          final isSender = conversation.sender.id == vendorId;
+                          final otherPersonId = isSender ? conversation.receiver.id : conversation.sender.id;
+                          if (otherPersonId == userId) {
+                            conversationId = conversation.id;
+                            break;
+                          }
+                        }
+                      }
+                      
+                      if (!mounted) return;
                       
                       Navigator.push(
                         context,

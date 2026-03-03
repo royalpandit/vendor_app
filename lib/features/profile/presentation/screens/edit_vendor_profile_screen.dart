@@ -6,12 +6,12 @@ import 'package:vendor_app/core/network/token_storage.dart';
 import 'package:vendor_app/core/utils/CustomStepper.dart';
 import 'package:vendor_app/core/utils/app_colors.dart';
 import 'package:vendor_app/features/authentication/data/models/resposne/category_model_response.dart';
-import 'package:vendor_app/features/authentication/data/models/resposne/subcategory_model_response.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
 import 'package:vendor_app/features/profile/data/models/resposne/vendor_details_model.dart';
 import 'package:vendor_app/core/utils/app_message.dart';
 import 'package:vendor_app/core/utils/result_popup.dart';
 import 'package:vendor_app/features/profile/presentation/screens/profile_screen.dart';
+import 'package:vendor_app/core/utils/app_icons.dart';
 
 class EditVendorProfileScreen extends StatefulWidget {
   final VendorDetails vendorDetails;
@@ -44,7 +44,6 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
   final _descriptionController = TextEditingController();
 
   CategoryModelResponse? _selectedCategory;
-  SubcategoryModelResponse? _selectedSubcategory;
 
   // Step-3 Controllers
   final _benefitsController = TextEditingController();
@@ -91,6 +90,15 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
       if (priceMatch != null) {
         _minPrice = double.tryParse(priceMatch.group(1) ?? '0') ?? 500.0;
         _maxPrice = double.tryParse(priceMatch.group(2) ?? '5000') ?? 5000.0;
+        // Clamp to slider bounds and ensure min <= max
+        const double _sliderMax = 100000;
+        _minPrice = _minPrice.clamp(0.0, _sliderMax);
+        _maxPrice = _maxPrice.clamp(0.0, _sliderMax);
+        if (_minPrice > _maxPrice) {
+          final tmp = _minPrice;
+          _minPrice = _maxPrice;
+          _maxPrice = tmp;
+        }
       }
     }
 
@@ -103,44 +111,41 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
     _lat = vendor.latitude ?? '28.6139';
     _lng = vendor.longitude ?? '77.2090';
 
-    // Category/Subcategory will be set after fetching from API
-    // Note: vendor.categoryId is actually the SUBCATEGORY ID stored in business_category
+    // Category will be set after fetching from API
     if (vendor.categoryId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _resolveAndLoadCategorySubcategory(vendor.categoryId!);
+        _loadCategory(vendor.categoryId!);
+      });
+    } else {
+      // Ensure categories are loaded so the dropdown can render (fallback)
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<AuthProvider>().fetchCategories();
       });
     }
   }
 
-  /// The vendor profile stores a subcategory ID in `business_category`.
-  /// Categories and subcategories are from separate APIs.
-  /// We iterate through categories and find which one contains the vendor's subcategory.
-  Future<void> _resolveAndLoadCategorySubcategory(int subcategoryId) async {
+  /// Load category with the given ID - Filter to exclude Matrimony
+  Future<void> _loadCategory(int categoryId) async {
     final prov = context.read<AuthProvider>();
     await prov.fetchCategories();
-    final cats = prov.categories;
-    if (cats.isEmpty) return;
-
-    for (final cat in cats) {
-      await prov.fetchSubcategories(cat.id);
-      final subs = prov.subcategories;
-      final match = subs.where((s) => s.id == subcategoryId).firstOrNull;
-      if (match != null) {
-        if (!mounted) return;
-        setState(() {
-          _selectedCategory = cat;
-          _selectedSubcategory = match;
-        });
-        return;
-      }
+    // Filter to only show Services and Venue (exclude Matrimony)
+    final filteredCats = prov.categories.where((c) => c.id == 1 || c.id == 2).toList();
+    
+    // Try to find matching category from filtered list
+    final match = filteredCats.where((c) => c.id == categoryId).firstOrNull;
+    if (match != null) {
+      if (!mounted) return;
+      setState(() {
+        _selectedCategory = match;
+      });
+      return;
     }
-
-    // Fallback: no match found, just select first category
+    
+    // Fallback: select first filtered category
     if (!mounted) return;
     setState(() {
-      _selectedCategory = cats.first;
+      _selectedCategory = filteredCats.isNotEmpty ? filteredCats.first : null;
     });
-    await prov.fetchSubcategories(cats.first.id);
   }
 
   @override
@@ -201,11 +206,6 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
       return;
     }
 
-    if (_selectedSubcategory == null) {
-      _showMsg('Please select a subcategory');
-      return;
-    }
-
     final priceRange = '₹${_minPrice.toStringAsFixed(0)} - ₹${_maxPrice.toStringAsFixed(0)}';
 
     final data = {
@@ -214,7 +214,7 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
       'email': _emailController.text.trim(),
       'adhar_number': _aadharController.text.trim(),
       'business_name': _businessNameController.text.trim(),
-      'business_category': _selectedSubcategory!.id,
+      'business_category': _selectedCategory!.id,
       'experience_in_business': int.tryParse(_experienceController.text.trim()) ?? 0,
       'price_range': priceRange,
       'service_coverage': _coverageController.text.trim(),
@@ -262,9 +262,26 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
         children: [
           if (anyLoading) const LinearProgressIndicator(minHeight: 3),
           Padding(
-            padding: const EdgeInsets.only(top: 80.0),
+            padding: const EdgeInsets.only(top: 40.0),
             child: Column(
               children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_currentStep > 0) {
+                        setState(() => _currentStep = _currentStep - 1);
+                      } else {
+                        Navigator.of(context).maybePop();
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Image.asset(AppIcons.arrowLeft, width: 24, height: 24, color: const Color(0xFF666666)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 CustomStepper(
                   currentStep: _currentStep,
                   onStepChanged: (step) => setState(() => _currentStep = step),
@@ -312,19 +329,19 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
             const Text(
               'Basic Info',
               style: TextStyle(
-                fontFamily: 'OnestSemiBold',
+                fontFamily: 'Onest',
                 fontSize: 24,
                 fontWeight: FontWeight.w600,
-                color: Colors.black,
+                color: Color(0xFF1a1a1a),
               ),
             ),
             const SizedBox(height: 10),
             const Text(
               'Update your basic information',
               style: TextStyle(
-                fontFamily: 'OnestRegular',
+                fontFamily: 'Onest',
                 fontSize: 16,
-                color: Colors.grey,
+                color: Color(0xFF999999),
               ),
             ),
             const SizedBox(height: 20),
@@ -397,44 +414,39 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
             const Text(
               'Business Info',
               style: TextStyle(
-                fontFamily: 'OnestSemiBold',
+                fontFamily: 'Onest',
                 fontSize: 24,
                 fontWeight: FontWeight.w600,
-                color: Colors.black,
+                color: Color(0xFF1a1a1a),
               ),
             ),
             const SizedBox(height: 10),
             const Text(
               'Update your business information',
               style: TextStyle(
-                fontFamily: 'OnestRegular',
+                fontFamily: 'Onest',
                 fontSize: 16,
-                color: Colors.grey,
+                color: Color(0xFF999999),
               ),
             ),
             const SizedBox(height: 20),
             // Category is auto-resolved and non-editable
+            // Business Category - Read-only (not editable)
             if (_selectedCategory != null) ...[
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF5F5F5),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.grey.shade300),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.category_outlined, color: Color(0xFFFF4678), size: 20),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Business Category', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                        const SizedBox(height: 2),
-                        Text(_selectedCategory!.name, style: const TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.w500)),
-                      ],
-                    ),
+                    Text('Business Category (Not Editable)', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                    const SizedBox(height: 6),
+                    Text(_selectedCategory!.name, style: const TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.w500)),
                   ],
                 ),
               ),
@@ -450,13 +462,6 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
                 child: Text('Loading category...', style: TextStyle(color: Colors.grey.shade500)),
               ),
             ],
-            const SizedBox(height: 15),
-            _buildSubcategoryDropdown(
-              label: 'Subcategory',
-              value: _selectedSubcategory,
-              items: subs,
-              onChanged: (sub) => setState(() => _selectedSubcategory = sub),
-            ),
             const SizedBox(height: 15),
             _buildCustomTextField(
               controller: _experienceController,
@@ -510,19 +515,19 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
             const Text(
               'Service Info',
               style: TextStyle(
-                fontFamily: 'OnestSemiBold',
+                fontFamily: 'Onest',
                 fontSize: 24,
                 fontWeight: FontWeight.w600,
-                color: Colors.black,
+                color: Color(0xFF1a1a1a),
               ),
             ),
             const SizedBox(height: 10),
             const Text(
               'Update your service details',
               style: TextStyle(
-                fontFamily: 'OnestRegular',
+                fontFamily: 'Onest',
                 fontSize: 16,
-                color: Colors.grey,
+                color: Color(0xFF999999),
               ),
             ),
             const SizedBox(height: 20),
@@ -530,8 +535,9 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
               'Price Range',
               style: TextStyle(
                 fontSize: 16,
+                fontFamily: 'Onest',
                 fontWeight: FontWeight.w500,
-                color: Colors.black,
+                color: Color(0xFF1a1a1a),
               ),
             ),
             const SizedBox(height: 8),
@@ -554,7 +560,7 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
             ),
             Text(
               '₹${_minPrice.toStringAsFixed(0)} - ₹${_maxPrice.toStringAsFixed(0)}',
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
+              style: const TextStyle(fontSize: 16, color: Color(0xFF999999), fontFamily: 'Onest'),
             ),
             const SizedBox(height: 20),
             _buildCustomTextField(
@@ -606,19 +612,19 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
           const Text(
             'Upload Documents',
             style: TextStyle(
-              fontFamily: 'OnestSemiBold',
+              fontFamily: 'Onest',
               fontSize: 24,
               fontWeight: FontWeight.w600,
-              color: Colors.black,
+              color: Color(0xFF1a1a1a),
             ),
           ),
           const SizedBox(height: 10),
           const Text(
             'Update your business documents',
             style: TextStyle(
-              fontFamily: 'OnestRegular',
+              fontFamily: 'Onest',
               fontSize: 16,
-              color: Colors.grey,
+              color: Color(0xFF999999),
             ),
           ),
           const SizedBox(height: 20),
@@ -658,23 +664,40 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
             },
           ),
           const SizedBox(height: 30),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _updateVendor,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.pinkColor,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                textStyle: const TextStyle(fontSize: 18),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFFE0E0E0)),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  backgroundColor: const Color(0xFFF5F5F5),
+                  foregroundColor: const Color(0xFF666666),
+                ),
+                child: const Text('Cancel', style: TextStyle(fontFamily: 'Onest')),
                 ),
               ),
-              child: const Text(
-                'Update Profile',
-                style: TextStyle(color: AppColors.whiteColor),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _updateVendor,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.pinkColor,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    textStyle: const TextStyle(fontSize: 18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Update Profile',
+                    style: TextStyle(color: AppColors.whiteColor),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -693,12 +716,23 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
       maxLines: maxLines,
       decoration: InputDecoration(
         labelText: label,
+        labelStyle: const TextStyle(fontFamily: 'Onest', color: Color(0xFF999999)),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFFF4678)),
         ),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: const Color(0xFFF5F5F5),
       ),
+      style: const TextStyle(fontFamily: 'Onest', color: Color(0xFF1a1a1a)),
       validator: (value) {
         if (value == null || value.isEmpty) {
           return 'Please enter $label';
@@ -708,41 +742,6 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
     );
   }
 
-  Widget _buildSubcategoryDropdown({
-    required String label,
-    required SubcategoryModelResponse? value,
-    required List<SubcategoryModelResponse> items,
-    required void Function(SubcategoryModelResponse?) onChanged,
-  }) {
-    // Ensure value is either null or exists in items list
-    SubcategoryModelResponse? safeValue;
-    if (value != null && items.isNotEmpty) {
-      try {
-        safeValue = items.firstWhere((item) => item.id == value.id);
-      } catch (e) {
-        safeValue = null; // Value not found in items, set to null
-      }
-    }
-
-    return DropdownButtonFormField<SubcategoryModelResponse>(
-      value: safeValue,
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        filled: true,
-        fillColor: Colors.white,
-      ),
-      items: items.map((sub) {
-        return DropdownMenuItem<SubcategoryModelResponse>(
-          value: sub,
-          child: Text(sub.name),
-        );
-      }).toList(),
-      onChanged: onChanged,
-    );
-  }
 
   Widget _buildPhotoUploadCard({
     required String title,
@@ -760,9 +759,17 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: Colors.grey.shade300),
+          color: const Color(0xFFF5F5F5),
+          border: Border.all(color: const Color(0xFFE0E0E0)),
           borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF000000).withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+              spreadRadius: 0,
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -770,7 +777,7 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: Colors.grey.shade200,
+                color: const Color(0xFFF0F0F0),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: hasPhoto
@@ -780,11 +787,11 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
                         fullUrl,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
-                          return const Icon(Icons.camera_alt, color: Colors.grey);
+                          return const Icon(Icons.camera_alt, color: Color(0xFF999999));
                         },
                       ),
                     )
-                  : const Icon(Icons.camera_alt, color: Colors.grey),
+                  : const Icon(Icons.camera_alt, color: Color(0xFF999999)),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -795,22 +802,24 @@ class _EditVendorProfileScreenState extends State<EditVendorProfileScreen> {
                     title,
                     style: const TextStyle(
                       fontSize: 16,
+                      fontFamily: 'Onest',
                       fontWeight: FontWeight.w600,
-                      color: Colors.black,
+                      color: Color(0xFF1a1a1a),
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     hasPhoto ? 'Tap to change' : subtitle,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 14,
-                      color: Colors.grey.shade600,
+                      fontFamily: 'Onest',
+                      color: Color(0xFF999999),
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.grey),
+            const Icon(Icons.chevron_right, color: Color(0xFF999999)),
           ],
         ),
       ),
