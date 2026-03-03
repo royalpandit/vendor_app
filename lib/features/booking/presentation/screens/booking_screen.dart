@@ -38,15 +38,15 @@ class _BookingScreenState extends State<BookingScreen> {
       });
     });
     _fetchUserIdAndBookings();
-<<<<<<< Updated upstream
-    // Refresh data every 10 seconds
+// <<<<<<< Updated upstream
+//     // Refresh data every 10 seconds
 
-=======
+// =======
     // Refresh bookings periodically (less frequent to avoid jank)
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
-      await _refreshBookingsOnly();
-    });
->>>>>>> Stashed changes
+    // _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+    //   await _refreshBookingsOnly();
+    // });
+// >>>>>>> Stashed changes
   }
 
   @override
