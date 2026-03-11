@@ -48,12 +48,17 @@ class DashboardResponse {
         : (json['total_booking'] ?? 0) as int;
 
     final computedVisibility = (totalLeads > 0)
-        ? (totalBooking / totalLeads) * 100.0
+        ? ((totalBooking / totalLeads) * 100.0).clamp(1.0, 100.0)
         : 0.0;
 
     final activeBooking = bookingsData != null
         ? (bookingsData['active'] ?? 0) as int
         : (json['active_booking'] ?? 0) as int;
+
+    final rawApiRatio = json['visibility_ratio'] != null
+        ? double.tryParse(json['visibility_ratio'].toString())
+        : null;
+    final finalRatio = (rawApiRatio ?? computedVisibility).clamp(0.0, 100.0);
 
     return DashboardResponse(
       vendorName: json['vendor_name'] ?? json['name'], // Support both field names
@@ -65,9 +70,7 @@ class DashboardResponse {
       services: servicesJson
           .map((e) => ServiceSummary.fromJson(e as Map<String, dynamic>))
           .toList(),
-      visibilityRatio: json['visibility_ratio'] != null
-          ? (double.tryParse(json['visibility_ratio'].toString()) ?? computedVisibility)
-          : computedVisibility,
+      visibilityRatio: finalRatio.toDouble(),
     );
   }
 }

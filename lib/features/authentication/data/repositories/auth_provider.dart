@@ -521,14 +521,16 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> fetchConversationMessages(int conversationId) async {
-    loading = true;
+    final isInitialLoad = conversationMessages.isEmpty;
+    if (isInitialLoad) {
+      loading = true;
+      notifyListeners();
+    }
     message = null;
-    conversationMessages = [];
-    notifyListeners();
 
     final res = await _repo.getConversationMessages(conversationId);
 
-    loading = false;
+    if (isInitialLoad) loading = false;
     switch (res) {
       case ApiSuccess<BaseResponse<List<ChatMessage>>>():
         conversationMessages = res.data.data ?? [];
@@ -877,7 +879,7 @@ class AuthProvider extends ChangeNotifier {
         return true;
 
       case ApiFailure():
-        message = res.message;
+        message = res.message ?? 'Server Error: Unable to update service';
         notifyListeners();
         return false;
     }
@@ -900,7 +902,7 @@ class AuthProvider extends ChangeNotifier {
         return true;
 
       case ApiFailure():
-        message = res.message;
+        message = res.message ?? 'Server Error: Unable to update status';
         notifyListeners();
         return false;
     }

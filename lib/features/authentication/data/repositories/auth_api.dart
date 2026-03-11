@@ -2,6 +2,7 @@
 import 'package:dio/dio.dart';
 import 'package:vendor_app/core/network/api_exceptions.dart';
 import 'package:vendor_app/core/network/base_response.dart';
+import 'package:vendor_app/core/network/dio_client.dart';
 import 'package:vendor_app/core/network/endpoints.dart';
 import 'package:vendor_app/core/session/session.dart';
 import 'package:vendor_app/features/authentication/data/models/request/send_otp_request.dart';
@@ -477,7 +478,12 @@ class AuthApi {
     return BaseResponse.fromJson(decoded, (json) {
       // json contains 'service' or 'venue' key
       final jsonMap = json as Map<String, dynamic>;
+      final isVenue = jsonMap.containsKey('venue');
       final serviceData = (jsonMap['service'] ?? jsonMap['venue']) as Map<String, dynamic>;
+      // Inject type so model knows if it's a venue
+      if (isVenue && serviceData['type'] == null) {
+        serviceData['type'] = 'venue';
+      }
       return ServiceDetailsResponse.fromJson(serviceData);
     });
   }
@@ -512,29 +518,41 @@ class AuthApi {
 
   /// POST /api/service-update
   Future<BaseResponse<Map<String, dynamic>>> updateService(Map<String, dynamic> data) async {
-    final res = await _dio.post(
-      Endpoints.serviceUpdate,
-      data: data,
-    );
-    final decoded = res.data;
+    try {
+      final res = await _dio.post(
+        Endpoints.serviceUpdate,
+        data: data,
+      );
+      final decoded = res.data;
 
-    return BaseResponse.fromJson(decoded, (json) {
-      return json as Map<String, dynamic>;
+      return BaseResponse.fromJson(decoded, (json) {
+        return json as Map<String, dynamic>;
     });
+    } on DioException catch (e) {
+      throwAsApi(e);
+    } catch (e) {
+      throw ApiException('Server error: Please try again');
+    }
   }
 
   /// POST /api/service-status-update
   Future<BaseResponse<Map<String, dynamic>>> updateServiceStatus(
       int serviceId, String status) async {
-    final res = await _dio.post(
-      Endpoints.serviceStatusUpdate,
-      data: {'service_id': serviceId, 'status': status},
-    );
-    final decoded = res.data;
+    try {
+      final res = await _dio.post(
+        Endpoints.serviceStatusUpdate,
+        data: {'service_id': serviceId, 'status': status},
+      );
+      final decoded = res.data;
 
-    return BaseResponse.fromJson(decoded, (json) {
-      return json as Map<String, dynamic>;
-    });
+      return BaseResponse.fromJson(decoded, (json) {
+        return json as Map<String, dynamic>;
+      });
+    } on DioException catch (e) {
+      throwAsApi(e);
+    } catch (e) {
+      throw ApiException('Server error: Please try again');
+    }
   }
 
   /// GET /api/details/booking?booking_id={booking_id}

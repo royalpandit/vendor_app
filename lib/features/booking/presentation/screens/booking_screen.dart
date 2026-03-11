@@ -12,6 +12,7 @@ import 'package:vendor_app/features/chat/presentation/screens/chat_screen.dart';
 import 'package:vendor_app/core/utils/app_message.dart';
 import 'package:vendor_app/core/utils/result_popup.dart';
 import 'package:vendor_app/features/booking/presentation/widgets/booking_details_bottom_sheet.dart';
+import 'package:vendor_app/features/home/presentation/screens/new_leads_screen.dart';
 
 class BookingScreen extends StatefulWidget {
   final int currentIndex;
@@ -143,8 +144,7 @@ class _BookingScreenState extends State<BookingScreen> {
                           );
                         },
                       ),
-                      ResponsiveUtil.verticalSpace(context, 3),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       // Search Bar
                       Row(
                         children: [
@@ -673,6 +673,11 @@ class _BookingScreenState extends State<BookingScreen> {
                           date,
                           location,
                           status,
+                        );
+                      } else if (status == "Pending" || status == "pending") {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => NewLeadsScreen()),
                         );
                       }
                     },

@@ -389,7 +389,7 @@ class AuthRepository {
     } on ApiException catch (e) {
       return ApiFailure(e.message, statusCode: e.statusCode);
     } catch (e) {
-      return ApiFailure(e.toString());
+      return ApiFailure('Server Error: Unable to fetch services');
     }
   }
 
@@ -400,7 +400,7 @@ class AuthRepository {
     } on ApiException catch (e) {
       return ApiFailure(e.message, statusCode: e.statusCode);
     } catch (e) {
-      return ApiFailure(e.toString());
+      return ApiFailure('Server Error: Please try again');
     }
   }
 
@@ -412,7 +412,7 @@ class AuthRepository {
     } on ApiException catch (e) {
       return ApiFailure(e.message, statusCode: e.statusCode);
     } catch (e) {
-      return ApiFailure(e.toString());
+      return ApiFailure('Server Error: Please try again');
     }
   }
 

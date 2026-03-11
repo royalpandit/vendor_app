@@ -209,33 +209,7 @@ class _BookingDetailsBottomSheetState extends State<BookingDetailsBottomSheet> {
                     if (_details!['notes'] != null) _row('Notes', _details!['notes']?.toString()),
                     const SizedBox(height: 20),
 
-                    // Check Details Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF4678),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Check Details',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontFamily: 'Onest',
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Cancel Button
+                    // Close Button
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(
@@ -249,7 +223,7 @@ class _BookingDetailsBottomSheetState extends State<BookingDetailsBottomSheet> {
                           ),
                         ),
                         child: const Text(
-                          'Cancel',
+                          'Close',
                           style: TextStyle(
                             fontSize: 16,
                             fontFamily: 'Onest',

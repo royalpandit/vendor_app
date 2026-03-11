@@ -11,6 +11,7 @@ import 'package:vendor_app/features/authentication/data/repositories/auth_provid
 // import 'package:vendor_app/features/authentication/presentation/screens/basic_info_screen.dart';
 // import 'package:vendor_app/features/home/presentation/screens/home_screen.dart';
 import 'package:vendor_app/core/utils/app_message.dart';
+import 'package:vendor_app/core/utils/result_popup.dart';
 
 
 
@@ -42,6 +43,11 @@ class _PhoneNumberVerifiedScreenState extends State<PhoneNumberVerifiedScreen> {
   bool _isValidPhone(String phone) {
     final digits = phone.replaceAll(RegExp(r'\D'), '');
     return digits.length == 10;
+  }
+
+  bool _isValidOtp(String otp) {
+    final digits = otp.replaceAll(RegExp(r'\D'), '');
+    return digits.length == 4;
   }
 
   Future<void> _onConfirmPressed(BuildContext ctx) async {
@@ -85,6 +91,10 @@ class _PhoneNumberVerifiedScreenState extends State<PhoneNumberVerifiedScreen> {
     final otp = _otpController.text.trim();
     if (otp.isEmpty) {
       _showMsg(ctx, 'Please enter OTP');
+      return;
+    }
+    if (!_isValidOtp(otp)) {
+      ResultPopup.show(ctx, success: false, message: 'Invalid OTP');
       return;
     }
 
@@ -255,11 +265,13 @@ class _PhoneNumberVerifiedScreenState extends State<PhoneNumberVerifiedScreen> {
                         controller: _otpController,
                         enabled: !auth.loading,
                         keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        maxLength: 4,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(4)],
                         style: AppTheme.inputText,
                         decoration: InputDecoration(
                           border: InputBorder.none,
-                          hintText: 'Enter OTP',
+                          counterText: '',
+                          hintText: 'Enter 4-digit OTP',
                           hintStyle: AppTheme.hintText,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,

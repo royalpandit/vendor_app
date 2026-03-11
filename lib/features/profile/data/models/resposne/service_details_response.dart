@@ -19,6 +19,16 @@ class ServiceDetailsResponse {
   final SubcategoryInfo? subcategory;
   final Map<String, dynamic>? meta;
 
+  // Venue-specific fields
+  final int? serviceId;
+  final String? address;
+  final String? pincode;
+  final int? minBooking;
+  final int? maxCapacity;
+  final double? extraGuestPrice;
+  final List<AmenityInfo> amenities;
+  final String? primaryImageUrl;
+
   ServiceDetailsResponse({
     required this.id,
     required this.vendorId,
@@ -39,6 +49,14 @@ class ServiceDetailsResponse {
     this.vendor,
     this.subcategory,
     this.meta,
+    this.serviceId,
+    this.address,
+    this.pincode,
+    this.minBooking,
+    this.maxCapacity,
+    this.extraGuestPrice,
+    this.amenities = const [],
+    this.primaryImageUrl,
   });
 
   factory ServiceDetailsResponse.fromJson(Map<String, dynamic> json) {
@@ -78,6 +96,14 @@ class ServiceDetailsResponse {
           ? SubcategoryInfo.fromJson(data['subcategory'])
           : null,
       meta: _safeCastMeta(data['meta']),
+      serviceId: data['service_id'] != null ? _safeInt(data['service_id']) : null,
+      address: _safeStringNullable(data['address']),
+      pincode: _safeStringNullable(data['pincode']),
+      minBooking: data['min_booking'] != null ? _safeInt(data['min_booking']) : null,
+      maxCapacity: data['max_capacity'] != null ? _safeInt(data['max_capacity']) : null,
+      extraGuestPrice: data['extra_guest_price'] != null ? _safeDouble(data['extra_guest_price']) : null,
+      amenities: _safeAmenityList(data['amenities']),
+      primaryImageUrl: _safeStringNullable(data['primary_image_url']),
     );
   }
 
@@ -130,6 +156,21 @@ class ServiceDetailsResponse {
       return [];
     }
   }
+
+  static List<AmenityInfo> _safeAmenityList(dynamic amenities) {
+    if (amenities == null) return [];
+    if (amenities is! List) return [];
+    try {
+      return amenities
+          .map((e) => e is Map<String, dynamic> ? AmenityInfo.fromJson(e) : null)
+          .whereType<AmenityInfo>()
+          .toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  bool get isVenue => type.toLowerCase() == 'venue' || serviceId != null;
 }
 
 class ServiceImage {
@@ -202,6 +243,21 @@ class SubcategoryInfo {
     return SubcategoryInfo(
       id: ServiceDetailsResponse._safeInt(json['id']),
       name: ServiceDetailsResponse._safeString(json['name']),
+    );
+  }
+}
+
+class AmenityInfo {
+  final int id;
+  final String name;
+
+  AmenityInfo({required this.id, required this.name});
+
+  factory AmenityInfo.fromJson(Map<String, dynamic> json) {
+    // Handle both direct amenity and pivot-style (API sends 'value' for venue amenities)
+    return AmenityInfo(
+      id: ServiceDetailsResponse._safeInt(json['amenity_id'] ?? json['id']),
+      name: ServiceDetailsResponse._safeString(json['value'] ?? json['name'] ?? ''),
     );
   }
 }

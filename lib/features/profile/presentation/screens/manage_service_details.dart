@@ -1131,35 +1131,92 @@ class _ManageServiceDetailsScreenState
 
     return await showModalBottomSheet<SubcategoryModelResponse>(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Select Subcategory',
-                style: AppTheme.heading5.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: prov.subcategories.length,
-                  itemBuilder: (context, index) {
-                    final subcat = prov.subcategories[index];
-                    return ListTile(
-                      title: Text(subcat.name, style: AppTheme.bodyRegular),
-                      onTap: () => Navigator.pop(context, subcat),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
+        final searchCtrl = TextEditingController();
+        var filtered = List<SubcategoryModelResponse>.from(prov.subcategories);
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return DraggableScrollableSheet(
+              initialChildSize: 0.6,
+              minChildSize: 0.4,
+              maxChildSize: 0.85,
+              expand: false,
+              builder: (context, scrollController) {
+                return Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE0E0E0),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      Text(
+                        'Select Subcategory',
+                        style: AppTheme.heading5.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: searchCtrl,
+                        decoration: InputDecoration(
+                          hintText: 'Search subcategory...',
+                          hintStyle: const TextStyle(fontFamily: 'Onest', color: Color(0xFF999999), fontSize: 14),
+                          prefixIcon: const Icon(Icons.search, color: Color(0xFF999999)),
+                          filled: true,
+                          fillColor: const Color(0xFFF5F5F5),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFFF4678)),
+                          ),
+                        ),
+                        style: const TextStyle(fontFamily: 'Onest', fontSize: 14),
+                        onChanged: (query) {
+                          setSheetState(() {
+                            filtered = prov.subcategories
+                                .where((s) => s.name.toLowerCase().contains(query.toLowerCase()))
+                                .toList();
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: filtered.isEmpty
+                            ? const Center(child: Text('No subcategories found', style: TextStyle(fontFamily: 'Onest', color: Color(0xFF999999))))
+                            : ListView.builder(
+                                controller: scrollController,
+                                itemCount: filtered.length,
+                                itemBuilder: (context, index) {
+                                  final subcat = filtered[index];
+                                  return ListTile(
+                                    title: Text(subcat.name, style: AppTheme.bodyRegular),
+                                    onTap: () => Navigator.pop(context, subcat),
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
         );
       },
     );
@@ -1174,35 +1231,92 @@ class _ManageServiceDetailsScreenState
 
     return await showModalBottomSheet<StateItem>(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Select State',
-                style: AppTheme.heading5.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: prov.states.length,
-                  itemBuilder: (context, index) {
-                    final state = prov.states[index];
-                    return ListTile(
-                      title: Text(state.name, style: AppTheme.bodyRegular),
-                      onTap: () => Navigator.pop(context, state),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
+        final searchCtrl = TextEditingController();
+        var filtered = List<StateItem>.from(prov.states);
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return DraggableScrollableSheet(
+              initialChildSize: 0.6,
+              minChildSize: 0.4,
+              maxChildSize: 0.85,
+              expand: false,
+              builder: (context, scrollController) {
+                return Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE0E0E0),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      Text(
+                        'Select State',
+                        style: AppTheme.heading5.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: searchCtrl,
+                        decoration: InputDecoration(
+                          hintText: 'Search state...',
+                          hintStyle: const TextStyle(fontFamily: 'Onest', color: Color(0xFF999999), fontSize: 14),
+                          prefixIcon: const Icon(Icons.search, color: Color(0xFF999999)),
+                          filled: true,
+                          fillColor: const Color(0xFFF5F5F5),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFFF4678)),
+                          ),
+                        ),
+                        style: const TextStyle(fontFamily: 'Onest', fontSize: 14),
+                        onChanged: (query) {
+                          setSheetState(() {
+                            filtered = prov.states
+                                .where((s) => s.name.toLowerCase().contains(query.toLowerCase()))
+                                .toList();
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: filtered.isEmpty
+                            ? const Center(child: Text('No states found', style: TextStyle(fontFamily: 'Onest', color: Color(0xFF999999))))
+                            : ListView.builder(
+                                controller: scrollController,
+                                itemCount: filtered.length,
+                                itemBuilder: (context, index) {
+                                  final state = filtered[index];
+                                  return ListTile(
+                                    title: Text(state.name, style: AppTheme.bodyRegular),
+                                    onTap: () => Navigator.pop(context, state),
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
         );
       },
     );
@@ -1219,35 +1333,92 @@ class _ManageServiceDetailsScreenState
 
     return await showModalBottomSheet<CityItem>(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Select City',
-                style: AppTheme.heading5.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: prov.cities.length,
-                  itemBuilder: (context, index) {
-                    final city = prov.cities[index];
-                    return ListTile(
-                      title: Text(city.name, style: AppTheme.bodyRegular),
-                      onTap: () => Navigator.pop(context, city),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
+        final searchCtrl = TextEditingController();
+        var filtered = List<CityItem>.from(prov.cities);
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return DraggableScrollableSheet(
+              initialChildSize: 0.6,
+              minChildSize: 0.4,
+              maxChildSize: 0.85,
+              expand: false,
+              builder: (context, scrollController) {
+                return Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE0E0E0),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      Text(
+                        'Select City',
+                        style: AppTheme.heading5.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: searchCtrl,
+                        decoration: InputDecoration(
+                          hintText: 'Search city...',
+                          hintStyle: const TextStyle(fontFamily: 'Onest', color: Color(0xFF999999), fontSize: 14),
+                          prefixIcon: const Icon(Icons.search, color: Color(0xFF999999)),
+                          filled: true,
+                          fillColor: const Color(0xFFF5F5F5),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFFF4678)),
+                          ),
+                        ),
+                        style: const TextStyle(fontFamily: 'Onest', fontSize: 14),
+                        onChanged: (query) {
+                          setSheetState(() {
+                            filtered = prov.cities
+                                .where((c) => c.name.toLowerCase().contains(query.toLowerCase()))
+                                .toList();
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: filtered.isEmpty
+                            ? const Center(child: Text('No cities found', style: TextStyle(fontFamily: 'Onest', color: Color(0xFF999999))))
+                            : ListView.builder(
+                                controller: scrollController,
+                                itemCount: filtered.length,
+                                itemBuilder: (context, index) {
+                                  final city = filtered[index];
+                                  return ListTile(
+                                    title: Text(city.name, style: AppTheme.bodyRegular),
+                                    onTap: () => Navigator.pop(context, city),
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
         );
       },
     );

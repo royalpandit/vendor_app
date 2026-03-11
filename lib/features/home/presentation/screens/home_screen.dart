@@ -251,6 +251,7 @@ class _HomeScreenState extends State<HomeScreen> {
         decoration: ShapeDecoration(
           color: color,
           shape: RoundedRectangleBorder(
+            side: const BorderSide(width: 1, color: Color(0xFFE0E0E0)),
             borderRadius: BorderRadius.circular(12),
           ),
         ),

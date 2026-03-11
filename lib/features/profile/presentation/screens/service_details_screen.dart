@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:vendor_app/features/authentication/data/repositories/auth_provider.dart';
-import 'package:vendor_app/features/profile/data/models/resposne/service_meta_field_response.dart';
-import 'package:vendor_app/core/utils/app_message.dart';
 import 'package:vendor_app/core/network/token_storage.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
@@ -16,23 +14,9 @@ class ServiceDetailsScreen extends StatefulWidget {
 class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   bool _loading = true;
 
-  // form controllers
-  final _nameCtrl = TextEditingController();
-  final _descCtrl = TextEditingController();
-  final _priceCtrl = TextEditingController();
-  final _locationCtrl = TextEditingController();
-  final _cityCtrl = TextEditingController();
-  final _stateCtrl = TextEditingController();
-  final _latCtrl = TextEditingController();
-  final _lngCtrl = TextEditingController();
-
-  List<ServiceMetaFieldResponse> _metaFields = [];
-  final Map<String, dynamic> _metaValues = {};
-
   @override
   void initState() {
     super.initState();
-    // defer to after first frame to avoid notifications during build
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
@@ -42,112 +26,48 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     final user = await TokenStorage.getUserData();
     final vendorId = user?.id;
     await prov.fetchServiceDetails(widget.serviceId, vendorId: vendorId);
-    final svc = prov.serviceDetails;
-    if (svc != null) {
-      _nameCtrl.text = svc.name;
-      _descCtrl.text = svc.description ?? '';
-      _priceCtrl.text = svc.basePrice.toString();
-      _locationCtrl.text = svc.location;
-      _cityCtrl.text = svc.city ?? '';
-      _stateCtrl.text = svc.state ?? '';
-      _latCtrl.text = svc.latitude ?? '';
-      _lngCtrl.text = svc.longitude ?? '';
-
-      // populate meta
-      if (svc.meta != null && svc.meta!.isNotEmpty) {
-        _metaFields = svc.meta!.entries
-            .map((e) => ServiceMetaFieldResponse(
-                  id: 0,
-                  fieldKey: e.key,
-                  label: e.key,
-                  type: e.value is bool ? 'toggle' :
-                        (e.value is List ? 'multi_select' : 'text'),
-                  options: e.value is List 
-                      ? List<String>.from((e.value as List).where((v) => v is String))
-                      : null,
-                  isRequired: false,
-                  isFilterable: false,
-                ))
-            .toList();
-        for (var entry in _metaFields) {
-          _metaValues[entry.fieldKey] = svc.meta![entry.fieldKey];
-        }
-      }
-    }
     setState(() => _loading = false);
   }
 
-
-  Future<void> _save() async {
-    final prov = context.read<AuthProvider>();
-    final svc = prov.serviceDetails;
-    final map = <String, dynamic>{
-      'id': widget.serviceId,
-      'vendor_id': svc?.vendor?.id,
-      'sub_category_id': svc?.subcategory?.id,
-      'name': _nameCtrl.text.trim(),
-      'description': _descCtrl.text.trim(),
-      'base_price': _priceCtrl.text.trim(),
-      'location': _locationCtrl.text.trim(),
-      'city': _cityCtrl.text.trim(),
-      'state': _stateCtrl.text.trim(),
-      'latitude': _latCtrl.text.trim(),
-      'longitude': _lngCtrl.text.trim(),
-      'meta': _metaValues.isNotEmpty ? _metaValues : null,
-    };
-
-    final ok = await prov.updateService(map);
-    if (!mounted) return;
-    AppMessage.show(context, prov.message ?? (ok ? 'Updated' : 'Failed'));
-    if (ok) {
-      // reload details
-      _load();
-    }
-  }
-
-  Future<void> _toggleServiceStatus() async {
-    final prov = context.read<AuthProvider>();
-    final svc = prov.serviceDetails;
-    if (svc == null) return;
-
-    final newStatus = svc.status == true ? 'hide' : 'show';
-    final ok = await prov.updateServiceStatus(widget.serviceId, newStatus);
-    if (!mounted) return;
-    AppMessage.show(
-        context, prov.message ?? (ok ? 'Status updated' : 'Failed to update status'));
-  }
-
-  Future<List<String>?> _showMultiSelectDialog(ServiceMetaFieldResponse f) async {
-    final opts = f.options ?? [];
-    final idKey = f.fieldKey;
-    final current = List<String>.from(_metaValues[idKey] ?? []);
-    final selected = <String>{...current};
-
-    return showDialog<List<String>>(context: context, builder: (context) {
-      return AlertDialog(
-        title: Text('Select ${f.label}'),
-        content: StatefulBuilder(builder: (context, set) {
-          return SizedBox(
-            width: double.maxFinite,
-            child: ListView(
-              shrinkWrap: true,
-              children: opts.map((o) {
-                final isSel = selected.contains(o);
-                return CheckboxListTile(
-                  value: isSel,
-                  title: Text(o),
-                  onChanged: (v) => set(() => v == true ? selected.add(o) : selected.remove(o)),
-                );
-              }).toList(),
-            ),
-          );
-        }),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, null), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, selected.toList()), child: const Text('OK')),
+  Widget _infoRow(String label, String? value) {
+    if (value == null || value.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 130,
+            child: Text(label,
+                style: const TextStyle(
+                    fontFamily: 'Onest',
+                    fontSize: 13,
+                    color: Color(0xFF999999),
+                    fontWeight: FontWeight.w500)),
+          ),
+          Expanded(
+            child: Text(value,
+                style: const TextStyle(
+                    fontFamily: 'Onest',
+                    fontSize: 14,
+                    color: Color(0xFF1a1a1a),
+                    fontWeight: FontWeight.w500)),
+          ),
         ],
-      );
-    });
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 20, bottom: 12),
+      child: Text(title,
+          style: const TextStyle(
+              fontSize: 16,
+              fontFamily: 'Onest',
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1a1a1a))),
+    );
   }
 
   @override
@@ -172,9 +92,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             ),
           ),
         ),
-        title: const Text(
-          'Service Details',
-          style: TextStyle(
+        title: Text(
+          svc?.isVenue == true ? 'Venue Details' : 'Service Details',
+          style: const TextStyle(
             fontSize: 18,
             fontFamily: 'Onest',
             fontWeight: FontWeight.w600,
@@ -182,22 +102,22 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           ),
         ),
         centerTitle: false,
-        actions: [
-          GestureDetector(
-            onTap: () => _toggleServiceStatus(),
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Image.asset(
-                'assets/icons/edit_icon.png',
-                width: 24,
-                height: 24,
-                color: svc?.status == true
-                    ? const Color(0xFFFF4678)
-                    : const Color(0xFF999999),
-              ),
-            ),
-          ),
-        ],
+        // actions: [
+        //   GestureDetector(
+        //     onTap: () => _toggleServiceStatus(),
+        //     child: Padding(
+        //       padding: const EdgeInsets.all(12.0),
+        //       child: Image.asset(
+        //         'assets/icons/edit_icon.png',
+        //         width: 24,
+        //         height: 24,
+        //         color: svc?.status == true
+        //             ? const Color(0xFFFF4678)
+        //             : const Color(0xFF999999),
+        //       ),
+        //     ),
+        //   ),
+        // ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -208,15 +128,27 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(svc.name,
-                          style: const TextStyle(
-                              fontSize: 20,
-                              fontFamily: 'Onest',
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1a1a1a))),
-                      const SizedBox(height: 12),
-
-                      if (svc.images.isNotEmpty)
+                      // Primary image or gallery
+                      if (svc.primaryImageUrl != null && svc.primaryImageUrl!.isNotEmpty)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            svc.primaryImageUrl!,
+                            width: double.infinity,
+                            height: 200,
+                            fit: BoxFit.cover,
+                            errorBuilder: (ctx, err, st) => Container(
+                              width: double.infinity,
+                              height: 200,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF5F5F5),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.image, size: 48, color: Color(0xFFCCCCCC)),
+                            ),
+                          ),
+                        )
+                      else if (svc.images.isNotEmpty)
                         SizedBox(
                           height: 180,
                           child: ListView.separated(
@@ -224,10 +156,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                             itemCount: svc.images.length,
                             separatorBuilder: (_, __) => const SizedBox(width: 8),
                             itemBuilder: (context, i) {
-                              final img = svc.images[i];
-                              final url = img.imageUrl;
-                              
-                              // Show placeholder if URL is empty or default
+                              final url = svc.images[i].imageUrl;
                               if (url.isEmpty || url.contains('default-service.jpg')) {
                                 return Container(
                                   height: 180,
@@ -258,6 +187,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                       else
                         Container(
                           height: 180,
+                          width: double.infinity,
                           decoration: BoxDecoration(
                               color: const Color(0xFFF5F5F5),
                               borderRadius: BorderRadius.circular(12)),
@@ -266,276 +196,159 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                         ),
                       const SizedBox(height: 16),
 
-                      // editable fields
-                      TextField(
-                        controller: _nameCtrl,
-                        decoration: InputDecoration(
-                          labelText: 'Name',
-                          labelStyle: const TextStyle(fontFamily: 'Onest', color: Color(0xFF999999)),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFFF4678)),
-                          ),
-                          filled: true,
-                          fillColor: const Color(0xFFF5F5F5),
-                        ),
-                        style: const TextStyle(fontFamily: 'Onest', color: Color(0xFF1a1a1a)),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _descCtrl,
-                        decoration: InputDecoration(
-                          labelText: 'Description',
-                          labelStyle: const TextStyle(fontFamily: 'Onest', color: Color(0xFF999999)),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFFF4678)),
-                          ),
-                          filled: true,
-                          fillColor: const Color(0xFFF5F5F5),
-                        ),
-                        style: const TextStyle(fontFamily: 'Onest', color: Color(0xFF1a1a1a)),
-                        maxLines: 3,
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _priceCtrl,
-                        decoration: InputDecoration(
-                          labelText: 'Price',
-                          labelStyle: const TextStyle(fontFamily: 'Onest', color: Color(0xFF999999)),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFFF4678)),
-                          ),
-                          filled: true,
-                          fillColor: const Color(0xFFF5F5F5),
-                        ),
-                        style: const TextStyle(fontFamily: 'Onest', color: Color(0xFF1a1a1a)),
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _locationCtrl,
-                        decoration: InputDecoration(
-                          labelText: 'Location',
-                          labelStyle: const TextStyle(fontFamily: 'Onest', color: Color(0xFF999999)),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFFF4678)),
-                          ),
-                          filled: true,
-                          fillColor: const Color(0xFFF5F5F5),
-                        ),
-                        style: const TextStyle(fontFamily: 'Onest', color: Color(0xFF1a1a1a)),
-                      ),
-                      const SizedBox(height: 12),
+                      // Name
+                      Text(svc.name,
+                          style: const TextStyle(
+                              fontSize: 20,
+                              fontFamily: 'Onest',
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1a1a1a))),
+                      const SizedBox(height: 4),
+
+                      // Verify & Type badges
                       Row(
                         children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _cityCtrl,
-                              decoration: InputDecoration(
-                                labelText: 'City',
-                                labelStyle: const TextStyle(fontFamily: 'Onest', color: Color(0xFF999999)),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(color: Color(0xFFFF4678)),
-                                ),
-                                filled: true,
-                                fillColor: const Color(0xFFF5F5F5),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: svc.verify == 1
+                                  ? const Color(0xFF14A38B).withOpacity(0.1)
+                                  : const Color(0xFFFF4678).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              svc.verify == 1 ? 'Verified' : 'Unverified',
+                              style: TextStyle(
+                                fontFamily: 'Onest',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: svc.verify == 1
+                                    ? const Color(0xFF14A38B)
+                                    : const Color(0xFFFF4678),
                               ),
-                              style: const TextStyle(fontFamily: 'Onest', color: Color(0xFF1a1a1a)),
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextField(
-                              controller: _stateCtrl,
-                              decoration: InputDecoration(
-                                labelText: 'State',
-                                labelStyle: const TextStyle(fontFamily: 'Onest', color: Color(0xFF999999)),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(color: Color(0xFFFF4678)),
-                                ),
-                                filled: true,
-                                fillColor: const Color(0xFFF5F5F5),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF4678).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              svc.type.isNotEmpty ? svc.type[0].toUpperCase() + svc.type.substring(1) : 'Service',
+                              style: const TextStyle(
+                                fontFamily: 'Onest',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFFFF4678),
                               ),
-                              style: const TextStyle(fontFamily: 'Onest', color: Color(0xFF1a1a1a)),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _latCtrl,
-                              decoration: InputDecoration(
-                                labelText: 'Latitude',
-                                labelStyle: const TextStyle(fontFamily: 'Onest', color: Color(0xFF999999)),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(color: Color(0xFFFF4678)),
-                                ),
-                                filled: true,
-                                fillColor: const Color(0xFFF5F5F5),
-                              ),
-                              style: const TextStyle(fontFamily: 'Onest', color: Color(0xFF1a1a1a)),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextField(
-                              controller: _lngCtrl,
-                              decoration: InputDecoration(
-                                labelText: 'Longitude',
-                                labelStyle: const TextStyle(fontFamily: 'Onest', color: Color(0xFF999999)),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(color: Color(0xFFFF4678)),
-                                ),
-                                filled: true,
-                                fillColor: const Color(0xFFF5F5F5),
-                              ),
-                              style: const TextStyle(fontFamily: 'Onest', color: Color(0xFF1a1a1a)),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      if (_metaFields.isNotEmpty) ...[
-                        const Text('Additional Details',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 8),
-                        ..._metaFields.map((f) {
-                          final key = f.fieldKey;
-                          switch (f.type) {
-                            case 'toggle':
-                              return SwitchListTile(
-                                title: Text(f.label),
-                                value: (_metaValues[key] as bool?) ?? false,
-                                onChanged: (v) =>
-                                    setState(() => _metaValues[key] = v),
-                              );
-                            case 'multi_select':
-                              final sel = List<String>.from(_metaValues[key] ?? []);
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(f.label),
-                                  Wrap(
-                                      spacing: 8,
-                                      children: sel
-                                          .map((s) => Chip(label: Text(s)))
-                                          .toList()),
-                                  OutlinedButton(
-                                      onPressed: () async {
-                                        final res =
-                                            await _showMultiSelectDialog(f);
-                                        if (res != null) setState(() => _metaValues[key] = res);
-                                      },
-                                      child: const Text('Select')),
-                                ],
-                              );
-                            default:
-                              return TextField(
-                                controller: TextEditingController(
-                                    text: _metaValues[key]?.toString()),
-                                decoration: InputDecoration(labelText: f.label),
-                                onChanged: (v) => _metaValues[key] = v,
-                              );
-                          }
-                        }),
+
+                      // Description
+                      if (svc.description != null && svc.description!.isNotEmpty) ...[
                         const SizedBox(height: 16),
+                        Text(svc.description!,
+                            style: const TextStyle(
+                                fontFamily: 'Onest',
+                                fontSize: 14,
+                                color: Color(0xFF666666),
+                                height: 1.5)),
                       ],
 
-                      ElevatedButton(
-                        onPressed: _save,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF4678),
-                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Update',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontFamily: 'Onest',
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                      // Divider
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Divider(color: Color(0xFFE0E0E0), height: 1),
                       ),
+
+                      // Basic Info Section
+                      _sectionTitle('Basic Info'),
+                      _infoRow('Name', svc.name),
+                      _infoRow('Base Price', '₹${svc.basePrice.toStringAsFixed(2)}'),
+                      _infoRow('Price Type', svc.priceType.isNotEmpty ? svc.priceType : null),
+                      _infoRow('City', svc.city),
+                      _infoRow('State', svc.state),
+                      _infoRow('Pincode', svc.pincode),
+                      _infoRow('Latitude', svc.latitude),
+                      _infoRow('Longitude', svc.longitude),
+
+                      // Address Section
+                      if (svc.address != null && svc.address!.isNotEmpty) ...[
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: Divider(color: Color(0xFFE0E0E0), height: 1),
+                        ),
+                        _sectionTitle('Address'),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF5F5F5),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFE0E0E0)),
+                          ),
+                          child: Text(svc.address!,
+                              style: const TextStyle(
+                                  fontFamily: 'Onest',
+                                  fontSize: 14,
+                                  color: Color(0xFF1a1a1a),
+                                  height: 1.5)),
+                        ),
+                      ],
+
+                      // Venue Details Section
+                      if (svc.isVenue) ...[
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: Divider(color: Color(0xFFE0E0E0), height: 1),
+                        ),
+                        _sectionTitle('Venue Details'),
+                        _infoRow('Min Booking', svc.minBooking?.toString()),
+                        _infoRow('Max Capacity', svc.maxCapacity?.toString()),
+                        _infoRow('Extra Guest Price',
+                            svc.extraGuestPrice != null
+                                ? '₹${svc.extraGuestPrice!.toStringAsFixed(2)}'
+                                : null),
+                      ],
+
+                      // Amenities Section
+                      if (svc.amenities.isNotEmpty) ...[
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: Divider(color: Color(0xFFE0E0E0), height: 1),
+                        ),
+                        _sectionTitle('Amenities'),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: svc.amenities.map((a) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF5F5F5),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFFE0E0E0)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.check_circle, size: 16, color: Color(0xFF14A38B)),
+                                const SizedBox(width: 6),
+                                Text(a.name,
+                                    style: const TextStyle(
+                                        fontFamily: 'Onest',
+                                        fontSize: 13,
+                                        color: Color(0xFF1a1a1a))),
+                              ],
+                            ),
+                          )).toList(),
+                        ),
+                      ],
+
+                      const SizedBox(height: 24),
                     ],
                   ),
                 ),

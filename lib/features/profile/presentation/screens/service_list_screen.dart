@@ -77,6 +77,41 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
     });
   }
 
+  Future<void> _toggleServiceVisibility(int serviceId) async {
+    final prov = context.read<AuthProvider>();
+    final item = _items.firstWhere((i) => i['id'] == serviceId, orElse: () => null);
+    
+    if (item == null) return;
+
+    // Determine current status
+    final isVisible = item['status'] == 1 || item['status'] == true;
+    final newStatus = isVisible ? 'hide' : 'show';
+
+    // Call API
+    final ok = await prov.updateServiceStatus(serviceId, newStatus);
+    
+    if (mounted) {
+      if (ok) {
+        // Update UI
+        setState(() {
+          final index = _items.indexWhere((i) => i['id'] == serviceId);
+          if (index != -1) {
+            _items[index]['status'] = newStatus == 'show' ? 1 : 0;
+          }
+        });
+        // ignore: use_build_context_synchronously
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Service ${newStatus == 'show' ? 'shown' : 'hidden'} successfully')),
+        );
+      } else {
+        // ignore: use_build_context_synchronously
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(prov.message ?? 'Failed to update status')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -225,23 +260,38 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
                             Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
+                                // GestureDetector(
+                                //   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ServiceDetailsScreen(serviceId: id))),
+                                //   child: Container(
+                                //     padding: const EdgeInsets.all(6),
+                                //     decoration: BoxDecoration(
+                                //       color: const Color(0xFFF5F5F5),
+                                //       borderRadius: BorderRadius.circular(6),
+                                //     ),
+                                //     child: Image.asset(
+                                //       'assets/icons/edit_icon.png',
+                                //       width: 20,
+                                //       height: 20,
+                                //       color: const Color(0xFFFF4678),
+                                //     ),
+                                //   ),
+                                // ),
+                                // const SizedBox(height: 8),
                                 GestureDetector(
-                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ServiceDetailsScreen(serviceId: id))),
+                                  onTap: () => _toggleServiceVisibility(id),
                                   child: Container(
                                     padding: const EdgeInsets.all(6),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFF5F5F5),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
-                                    child: Image.asset(
-                                      'assets/icons/edit_icon.png',
-                                      width: 20,
-                                      height: 20,
-                                      color: const Color(0xFFFF4678),
+                                    child: Icon(
+                                      (item['status'] == 1 || item['status'] == true) ? Icons.visibility : Icons.visibility_off,
+                                      size: 20,
+                                      color: (item['status'] == 1 || item['status'] == true) ? const Color(0xFFFF4678) : const Color(0xFF999999),
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 4),
                               ],
                             ),
                           ],
