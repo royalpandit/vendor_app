@@ -265,14 +265,42 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                         child: Divider(color: Color(0xFFE0E0E0), height: 1),
                       ),
 
-                      // Basic Info Section
-                      _sectionTitle('Basic Info'),
-                      _infoRow('Name', svc.name),
-                      _infoRow('Base Price', '₹${svc.basePrice.toStringAsFixed(2)}'),
-                      _infoRow('Price Type', svc.priceType.isNotEmpty ? svc.priceType : null),
+                      // Choose section based on type
+                      if (svc.isVenue) ...[
+                        _sectionTitle('Venue Information'),
+                        _infoRow('Address', svc.address),
+                        _infoRow('City', svc.city),
+                        _infoRow('State', svc.state),
+                        _infoRow('Pincode', svc.pincode),
+                        const SizedBox(height: 16),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: Divider(color: Color(0xFFE0E0E0), height: 1),
+                        ),
+                        _sectionTitle('Booking Details'),
+                        _infoRow('Min Booking', svc.minBooking?.toString()),
+                        _infoRow('Max Capacity', svc.maxCapacity?.toString()),
+                        _infoRow('Base Price', '₹${svc.basePrice.toStringAsFixed(2)}'),
+                        _infoRow('Extra Guest Price',
+                            svc.extraGuestPrice != null
+                                ? '₹${svc.extraGuestPrice!.toStringAsFixed(2)}'
+                                : null),
+                      ] else ...[
+                        _sectionTitle('Basic Info'),
+                        _infoRow('Name', svc.name),
+                        _infoRow('Base Price', '₹${svc.basePrice.toStringAsFixed(2)}'),
+                        _infoRow('Price Type', svc.priceType.isNotEmpty ? svc.priceType : null),
+                      ],
+
+                      const SizedBox(height: 16),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Divider(color: Color(0xFFE0E0E0), height: 1),
+                      ),
+
+                      _sectionTitle('Location'),
                       _infoRow('City', svc.city),
                       _infoRow('State', svc.state),
-                      _infoRow('Pincode', svc.pincode),
                       _infoRow('Latitude', svc.latitude),
                       _infoRow('Longitude', svc.longitude),
 
@@ -282,7 +310,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                           padding: EdgeInsets.symmetric(vertical: 8),
                           child: Divider(color: Color(0xFFE0E0E0), height: 1),
                         ),
-                        _sectionTitle('Address'),
+                        _sectionTitle('Full Address'),
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(14),
@@ -300,22 +328,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                         ),
                       ],
 
-                      // Venue Details Section
-                      if (svc.isVenue) ...[
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                          child: Divider(color: Color(0xFFE0E0E0), height: 1),
-                        ),
-                        _sectionTitle('Venue Details'),
-                        _infoRow('Min Booking', svc.minBooking?.toString()),
-                        _infoRow('Max Capacity', svc.maxCapacity?.toString()),
-                        _infoRow('Extra Guest Price',
-                            svc.extraGuestPrice != null
-                                ? '₹${svc.extraGuestPrice!.toStringAsFixed(2)}'
-                                : null),
-                      ],
-
-                      // Amenities Section
+                      // Amenities Section (Venues)
                       if (svc.amenities.isNotEmpty) ...[
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 8),
@@ -348,10 +361,53 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                         ),
                       ],
 
+                      // Meta Fields Section (Services)
+                      if (!svc.isVenue && svc.meta != null && svc.meta!.isNotEmpty) ...[
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: Divider(color: Color(0xFFE0E0E0), height: 1),
+                        ),
+                        _sectionTitle('Additional Details'),
+                        ..._buildMetaFieldWidget(svc.meta!),
+                      ],
+
                       const SizedBox(height: 24),
                     ],
                   ),
                 ),
     );
+  }
+
+  List<Widget> _buildMetaFieldWidget(Map<String, dynamic> meta) {
+    final widgets = <Widget>[];
+    
+    meta.forEach((key, value) {
+      String displayKey = key;
+      String displayValue = '';
+      
+      // Format the key for display
+      displayKey = displayKey
+          .replaceAll('_', ' ')
+          .split(' ')
+          .map((w) => w[0].toUpperCase() + w.substring(1))
+          .join(' ');
+      
+      // Format the value
+      if (value == null) {
+        return; // Skip null values
+      } else if (value is List) {
+        displayValue = value.join(', ');
+      } else if (value is bool) {
+        displayValue = value ? 'Yes' : 'No';
+      } else {
+        displayValue = value.toString();
+      }
+      
+      if (displayValue.isNotEmpty) {
+        widgets.add(_infoRow(displayKey, displayValue));
+      }
+    });
+    
+    return widgets;
   }
 }

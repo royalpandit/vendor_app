@@ -288,12 +288,12 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
           ),
           const SizedBox(height: 20),
 
-          _buildCustomTextField(controller: _nameController, label: 'Your Name'),
+          _buildCustomTextField(controller: _nameController, label: 'Full Name*'),
           const SizedBox(height: 15),
 
           _buildCustomTextField(
             controller: _emailController,
-            label: 'Your Email',
+            label: 'Email*',
             keyboardType: TextInputType.emailAddress,
           ),
           const SizedBox(height: 15),
@@ -305,10 +305,10 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
           ),
           const SizedBox(height: 15),
 
-          _buildCustomTextField(controller: _businessNameController, label: 'Your Business Name'),
+          _buildCustomTextField(controller: _businessNameController, label: 'Business Name*'),
           const SizedBox(height: 15),
 
-          _buildCustomTextField(controller: _businessAddressController, label: 'Your Business Address'),
+          _buildCustomTextField(controller: _businessAddressController, label: 'Business Address*'),
           const SizedBox(height: 30),
 
           SizedBox(
@@ -356,7 +356,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
 
           // Category Dropdown (from API) - Only Services & Venue (exclude Matrimony)
           _buildCategoryDropdown(
-            label: 'Business Category',
+            label: 'Business Category*',
             value: _selectedCategory,
             items: categories.where((c) => (c.id == 1 || c.id == 2) && c.name != 'Matrimony').toList(),
             onChanged: (cat) async {
@@ -369,7 +369,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
 
           _buildCustomTextField(
             controller: _experienceController,
-            label: 'Experience in Business (years)',
+            label: 'Experience in Business (years)*',
             keyboardType: TextInputType.number,
           ),
           const SizedBox(height: 15),

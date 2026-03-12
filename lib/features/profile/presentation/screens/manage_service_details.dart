@@ -44,6 +44,9 @@ class _ManageServiceDetailsScreenState
   String get _normalizedType => (widget.type).trim().toLowerCase();
   bool _isVenue = false;
 
+  // Form key for validation
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
   // Image carousel
   List<String> _imagePaths = [];
   int _currentImageIndex = 0;
@@ -57,6 +60,7 @@ class _ManageServiceDetailsScreenState
   final priceController = TextEditingController();
   final maxCapacityController = TextEditingController();
   final minCapacityController = TextEditingController();
+  final extraGuestPriceController = TextEditingController();
   final addressController = TextEditingController();
   final cityController = TextEditingController();
   final stateController = TextEditingController();
@@ -277,18 +281,14 @@ class _ManageServiceDetailsScreenState
   Future<void> _submitForm() async {
     if (_saving) return;
 
-    if (businessNameController.text.trim().isEmpty) {
-      _showMsg('Please enter business name');
+    // Validate form first
+    if (!_formKey.currentState!.validate()) {
+      _showMsg('Please fill all required fields');
       return;
     }
 
     if (_imagePaths.isEmpty) {
       _showMsg('Please upload at least one image');
-      return;
-    }
-
-    if (priceController.text.trim().isEmpty) {
-      _showMsg('Please enter price');
       return;
     }
 
@@ -364,6 +364,7 @@ class _ManageServiceDetailsScreenState
         final minBooking = int.tryParse(minCapacityController.text.trim()) ?? 0;
         final maxCapacity = int.tryParse(maxCapacityController.text.trim()) ?? 0;
         final basePrice = num.tryParse(priceController.text.trim()) ?? 0;
+        final extraGuestPrice = num.tryParse(extraGuestPriceController.text.trim()) ?? 0;
 
         // Validate subcategory selection
         if (_selectedSubcategoryId == null) {
@@ -390,7 +391,7 @@ class _ManageServiceDetailsScreenState
           minBooking: minBooking,
           maxCapacity: maxCapacity,
           basePrice: basePrice,
-          extraGuestPrice: 0,
+          extraGuestPrice: extraGuestPrice,
         );
 
         final request = VenueCreateRequest(
@@ -497,6 +498,7 @@ class _ManageServiceDetailsScreenState
     priceController.dispose();
     maxCapacityController.dispose();
     minCapacityController.dispose();
+    extraGuestPriceController.dispose();
     addressController.dispose();
     cityController.dispose();
     stateController.dispose();
@@ -526,34 +528,85 @@ class _ManageServiceDetailsScreenState
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Image Carousel or Upload Button
-                      if (_imagePaths.isNotEmpty) ...[
-                        _buildImageCarousel(),
-                        const SizedBox(height: 16),
-                      ],
-                      // Business Name
-                      _buildTextField(
-                        'Business Name',
-                        'Enter your business name',
-                        businessNameController,
-                      ),
-                      const SizedBox(height: 16),
-                      // Category is auto-selected from profile - show as read-only info
-                      if (_selectedCategoryName != null) ...[
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF5F5F5),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFDBE2EA)),
+                  child: Form(
+                    key: _formKey,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Image Section
+                        const Text(
+                          'Images*',
+                          style: TextStyle(
+                            color: Color(0xFF746E85),
+                            fontSize: 16,
+                            fontFamily: 'Onest',
+                            fontWeight: FontWeight.w400,
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
+                        ),
+                        const SizedBox(height: 8),
+                        if (_imagePaths.isNotEmpty) ...[
+                          _buildImageCarousel(),
+                          const SizedBox(height: 12),
+                        ],
+                        GestureDetector(
+                          onTap: _pickImage,
+                          child: Container(
+                            width: double.infinity,
+                            height: _imagePaths.isEmpty ? 180 : 56,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF5F5F5),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFFE0E0E0),
+                                width: 2,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Image.asset(
+                                  'assets/icons/gallery-export.png',
+                                  width: 24,
+                                  height: 24,
+                                  color: const Color(0xFFFF4678),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _imagePaths.isEmpty ? 'Tap to add images' : 'Add more images (${_imagePaths.length})',
+                                  style: const TextStyle(
+                                    color: Color(0xFFFF4678),
+                                    fontSize: 16,
+                                    fontFamily: 'Onest',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Business Name
+                        _buildTextField(
+                          'Business Name*',
+                          'Enter your business name',
+                          businessNameController,
+                          isRequired: true,
+                        ),
+                        const SizedBox(height: 16),
+                        // Category is auto-selected from profile - show as read-only info
+                        if (_selectedCategoryName != null) ...[
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF5F5F5),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFDBE2EA)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                               Text('Category', style: TextStyle(color: Color(0xFF746E85), fontSize: 12, fontFamily: 'Onest', fontWeight: FontWeight.w400)),
                               const SizedBox(height: 6),
                               Text(_selectedCategoryName!, style: TextStyle(color: Colors.black, fontSize: 15, fontFamily: 'Onest', fontWeight: FontWeight.w500)),
@@ -561,248 +614,311 @@ class _ManageServiceDetailsScreenState
                           ),
                         ),
                         const SizedBox(height: 16),
-                      ],
-                      // Subcategory
-                      _buildDropdownField(
-                        'Subcategory',
-                        _selectedSubcategoryName ?? 'Select Subcategory',
-                        onTap: () async {
-                          if (_selectedCategoryId == null) {
-                            _showMsg('Category not loaded yet. Please wait.');
-                            return;
-                          }
-                          final picked = await _showSubcategoryPicker(context);
-                          if (picked != null) {
-                            setState(() {
-                              _selectedSubcategoryId = picked.id;
-                              _selectedSubcategoryName = picked.name;
-                              subcategoryController.text = picked.name;
-                            });
-                            // fetch meta fields for this subcategory
-                            await context.read<AuthProvider>().fetchServiceMetaFields(picked.id);
-                            final meta = context.read<AuthProvider>().serviceMetaFields;
-                            setState(() {
-                              _metaFields = meta;
-                              _metaValues.clear();
-                              for (final f in _metaFields) {
-                                final idKey = '${f.id}';
-                                // initialize default values keyed by field id (string)
-                                switch (f.type) {
-                                  case 'toggle':
-                                    _metaValues[idKey] = false;
-                                    break;
-                                  case 'multi_select':
-                                    _metaValues[idKey] = <String>[];
-                                    break;
-                                  default:
-                                    _metaValues[idKey] = null;
+                        ],
+                        // Subcategory
+                        _buildDropdownField(
+                          'Sub Category*',
+                          _selectedSubcategoryName ?? 'Select an option',
+                          onTap: () async {
+                            if (_selectedCategoryId == null) {
+                              _showMsg('Category not loaded yet. Please wait.');
+                              return;
+                            }
+                            final picked = await _showSubcategoryPicker(context);
+                            if (picked != null) {
+                              setState(() {
+                                _selectedSubcategoryId = picked.id;
+                                _selectedSubcategoryName = picked.name;
+                                subcategoryController.text = picked.name;
+                              });
+                              // fetch meta fields for this subcategory
+                              await context.read<AuthProvider>().fetchServiceMetaFields(picked.id);
+                              final meta = context.read<AuthProvider>().serviceMetaFields;
+                              setState(() {
+                                _metaFields = meta;
+                                _metaValues.clear();
+                                for (final f in _metaFields) {
+                                  final idKey = '${f.id}';
+                                  // initialize default values keyed by field id (string)
+                                  switch (f.type) {
+                                    case 'toggle':
+                                      _metaValues[idKey] = false;
+                                      break;
+                                    case 'multi_select':
+                                      _metaValues[idKey] = <String>[];
+                                      break;
+                                    default:
+                                      _metaValues[idKey] = null;
+                                  }
                                 }
-                              }
-                            });
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      // Dynamic Meta Fields
-                      if (_metaFields.isNotEmpty) ...[
-                        const Text(
-                          'Additional Details',
-                          style: TextStyle(
-                            color: Color(0xFF746E85),
-                            fontSize: 18,
-                            fontFamily: 'Onest',
-                            fontWeight: FontWeight.w500,
-                          ),
+                              });
+                            }
+                          },
                         ),
-                        const SizedBox(height: 12),
-                        ..._buildMetaFields(),
                         const SizedBox(height: 16),
-                      ],
-                      // Description
-                      _buildTextField(
-                        'Description',
-                        'Add Description',
-                        descriptionController,
-                        maxLines: 5,
-                      ),
-                      const SizedBox(height: 16),
-                      // Price
-                      _buildTextField(
-                        'Price',
-                        'Enter your service price',
-                        priceController,
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: 16),
-                      // Booking Capacity (for venues)
-                      if (_isVenue) ...[
-                        const Text(
-                          'Booking Capacity',
-                          style: TextStyle(
-                            color: Color(0xFF746E85),
-                            fontSize: 18,
-                            fontFamily: 'Onest',
-                            fontWeight: FontWeight.w500,
+                        // Dynamic Meta Fields
+                        if (_metaFields.isNotEmpty) ...[
+                          const Text(
+                            'Additional Details',
+                            style: TextStyle(
+                              color: Color(0xFF746E85),
+                              fontSize: 18,
+                              fontFamily: 'Onest',
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
+                          const SizedBox(height: 12),
+                          ..._buildMetaFields(),
+                          const SizedBox(height: 16),
+                        ],
+                        // Description
+                        _buildTextField(
+                          'Description',
+                          'Add Description',
+                          descriptionController,
+                          maxLines: 5,
+                          isRequired: false,
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
+                        // Booking Capacity (for venues)
+                        if (_isVenue) ...[
+                          const Text(
+                            'Booking & Pricing Details',
+                            style: TextStyle(
+                              color: Color(0xFF746E85),
+                              fontSize: 18,
+                              fontFamily: 'Onest',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildTextField(
+                                  'Minimum Booking*',
+                                  '50',
+                                  minCapacityController,
+                                  keyboardType: TextInputType.number,
+                                  isRequired: true,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _buildTextField(
+                                  'Maximum Capacity*',
+                                  '300',
+                                  maxCapacityController,
+                                  keyboardType: TextInputType.number,
+                                  isRequired: true,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          // Base Price
+                          _buildTextField(
+                            'Base Price*',
+                            'Enter your service price',
+                            priceController,
+                            keyboardType: TextInputType.number,
+                            isRequired: true,
+                          ),
+                          const SizedBox(height: 16),
+                          // Extra Guest Price
+                          _buildTextField(
+                            'Extra Guest Price*',
+                            'Per guest price',
+                            extraGuestPriceController,
+                            keyboardType: TextInputType.number,
+                            isRequired: true,
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        // For non-venues, show base price here
+                        if (!_isVenue) ...[
+                          _buildTextField(
+                            'Base Price*',
+                            'Enter your service price',
+                            priceController,
+                            keyboardType: TextInputType.number,
+                            isRequired: true,
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        // Address
+                        _buildTextField(
+                          'Address*',
+                          'Enter your address',
+                          addressController,
+                          isRequired: true,
+                        ),
+                        const SizedBox(height: 16),
+                        // State & City
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildDropdownField(
+                                'State*',
+                                _selState?.name ?? (stateController.text.isEmpty
+                                    ? 'Select an option'
+                                    : stateController.text),
+                                onTap: () async {
+                                  final picked = await _showStatePicker(context);
+                                  if (picked != null) {
+                                    setState(() {
+                                      _selState = picked;
+                                      stateController.text = picked.name;
+                                      _selCity = null;
+                                      cityController.clear();
+                                    });
+                                    await context
+                                        .read<AuthProvider>()
+                                        .loadCities(picked.id);
+                                  }
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildDropdownField(
+                                'City*',
+                                _selCity?.name ?? (cityController.text.isEmpty
+                                    ? 'Select an option'
+                                    : cityController.text),
+                                onTap: () async {
+                                  final sid = _selState?.id;
+                                  if (sid == null) {
+                                    _showMsg('Please select a State first');
+                                    return;
+                                  }
+                                  final picked =
+                                      await _showCityPicker(context, sid);
+                                  if (picked != null) {
+                                    setState(() {
+                                      _selCity = picked;
+                                      cityController.text = picked.name;
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // Pincode
+                        _buildTextField(
+                          'Pincode*',
+                          'Enter pincode',
+                          pincodeController,
+                          keyboardType: TextInputType.number,
+                          isRequired: true,
+                        ),
+                        const SizedBox(height: 16),
+                        // Latitude & Longitude
                         Row(
                           children: [
                             Expanded(
                               child: _buildTextField(
-                                'Maximum Capacity',
-                                '300',
-                                maxCapacityController,
+                                'Latitude*',
+                                'Enter latitude',
+                                latitudeController,
                                 keyboardType: TextInputType.number,
+                                isRequired: true,
                               ),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
                               child: _buildTextField(
-                                'Minimum Capacity',
-                                '50',
-                                minCapacityController,
+                                'Longitude*',
+                                'Enter longitude',
+                                longitudeController,
                                 keyboardType: TextInputType.number,
+                                isRequired: true,
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 16),
-                      ],
-                      // Address
-                      _buildTextField(
-                        'Address',
-                        'Enter your address',
-                        addressController,
-                      ),
-                      const SizedBox(height: 16),
-                      // State & City
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildDropdownField(
-                              'State',
-                              _selState?.name ?? (stateController.text.isEmpty
-                                  ? 'State'
-                                  : stateController.text),
-                              onTap: () async {
-                                final picked = await _showStatePicker(context);
-                                if (picked != null) {
-                                  setState(() {
-                                    _selState = picked;
-                                    stateController.text = picked.name;
-                                    _selCity = null;
-                                    cityController.clear();
-                                  });
-                                  await context
-                                      .read<AuthProvider>()
-                                      .loadCities(picked.id);
-                                }
-                              },
+                        // Amenities (for venues)
+                        if (_isVenue) ...[
+                          const Text(
+                            'Venue Amenities',
+                            style: TextStyle(
+                              color: Color(0xFF746E85),
+                              fontSize: 18,
+                              fontFamily: 'Onest',
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _buildDropdownField(
-                              'City',
-                              _selCity?.name ?? (cityController.text.isEmpty
-                                  ? 'City'
-                                  : cityController.text),
-                              onTap: () async {
-                                final sid = _selState?.id;
-                                if (sid == null) {
-                                  _showMsg('Please select a State first');
-                                  return;
-                                }
-                                final picked =
-                                    await _showCityPicker(context, sid);
-                                if (picked != null) {
-                                  setState(() {
-                                    _selCity = picked;
-                                    cityController.text = picked.name;
-                                  });
-                                }
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      // Pincode
-                      _buildTextField(
-                        'Pincode',
-                        'Enter pincode',
-                        pincodeController,
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: 16),
-                      // Amenities (for venues)
-                      if (_isVenue) ...[
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildTextField(
-                              'Amenties',
-                              _selectedAmenities.isEmpty
-                                  ? 'Enter your amenties you provide'
-                                  : _selectedAmenities
-                                      .map((a) => a.name)
-                                      .join(', '),
-                              amenitiesController,
-                              readOnly: true,
-                              onTap: _openAmenityPicker,
-                            ),
-                            if (_selectedAmenities.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              Container(
-                                height: 24,
-                                decoration: ShapeDecoration(
-                                  color: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(50),
+                          const SizedBox(height: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildTextField(
+                                'Amenities*',
+                                _selectedAmenities.isEmpty
+                                    ? 'Select amenities you provide'
+                                    : _selectedAmenities
+                                        .map((a) => a.name)
+                                        .join(', '),
+                                amenitiesController,
+                                readOnly: true,
+                                onTap: _openAmenityPicker,
+                                isRequired: true,
+                              ),
+                              if (_selectedAmenities.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Container(
+                                  height: 24,
+                                  decoration: ShapeDecoration(
+                                    color: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(50),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6),
+                                        child: Text(
+                                          'Min ${minCapacityController.text.isEmpty ? "30" : minCapacityController.text}',
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            color: Color(0xFF171719),
+                                            fontSize: 12,
+                                            fontFamily: 'Onest',
+                                            fontWeight: FontWeight.w400,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6),
+                                        child: Text(
+                                          'Max ${maxCapacityController.text.isEmpty ? "4000" : maxCapacityController.text}',
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            color: Color(0xFF171719),
+                                            fontSize: 12,
+                                            fontFamily: 'Onest',
+                                            fontWeight: FontWeight.w400,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6),
-                                      child: Text(
-                                        'Min ${minCapacityController.text.isEmpty ? "30" : minCapacityController.text}',
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(
-                                          color: Color(0xFF171719),
-                                          fontSize: 12,
-                                          fontFamily: 'Onest',
-                                          fontWeight: FontWeight.w400,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6),
-                                      child: Text(
-                                        'Max ${maxCapacityController.text.isEmpty ? "4000" : maxCapacityController.text}',
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(
-                                          color: Color(0xFF171719),
-                                          fontSize: 12,
-                                          fontFamily: 'Onest',
-                                          fontWeight: FontWeight.w400,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                              ],
                             ],
-                          ],
-                        ),
-                        const SizedBox(height: 32),
+                          ),
+                          const SizedBox(height: 32),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -893,25 +1009,19 @@ class _ManageServiceDetailsScreenState
               ),
             ),
           ),
-          GestureDetector(
-            onTap: _pickImage,
-            child: Image.asset(
-              AppIcons.galleryExportIcon,
-              width: 24,
-              height: 24,
-            ),
-          ),
+          SizedBox(width: 24),
         ],
       ),
     );
   }
 
+  /// Image carousel displaying multiple selected images with delete buttons
   Widget _buildImageCarousel() {
     return Stack(
       alignment: Alignment.bottomCenter,
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           child: CarouselSlider.builder(
             carouselController: _carouselController,
             itemCount: _imagePaths.length,
@@ -938,15 +1048,15 @@ class _ManageServiceDetailsScreenState
                     child: GestureDetector(
                       onTap: () => _removeImage(index),
                       child: Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: const EdgeInsets.all(6),
                         decoration: const BoxDecoration(
                           color: Colors.white,
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
                           Icons.close,
-                          size: 16,
-                          color: Colors.black,
+                          size: 18,
+                          color: Color(0xFF666666),
                         ),
                       ),
                     ),
@@ -957,30 +1067,26 @@ class _ManageServiceDetailsScreenState
           ),
         ),
         Positioned(
-          bottom: 10,
+          bottom: 12,
           child: Container(
-            padding: const EdgeInsets.all(4),
-            decoration: ShapeDecoration(
-              color: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(100),
-              ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.9),
+              borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: List.generate(
                 _imagePaths.length,
                 (index) => Container(
-                  width: 6,
-                  height: 6,
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  decoration: ShapeDecoration(
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
                     color: _currentImageIndex == index
                         ? const Color(0xFFFF4678)
                         : const Color(0xFFDDDDDD),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(100),
-                    ),
+                    shape: BoxShape.circle,
                   ),
                 ),
               ),
@@ -998,6 +1104,7 @@ class _ManageServiceDetailsScreenState
     int maxLines = 1,
     TextInputType? keyboardType,
     bool readOnly = false,
+    bool isRequired = false,
     VoidCallback? onTap,
   }) {
     return Column(
@@ -1047,6 +1154,7 @@ class _ManageServiceDetailsScreenState
             ),
           ),
           style: AppTheme.inputText.copyWith(fontSize: 16),
+          validator: (value) => isRequired && (value == null || value.isEmpty) ? 'This field is required' : null,
         ),
       ],
     );
