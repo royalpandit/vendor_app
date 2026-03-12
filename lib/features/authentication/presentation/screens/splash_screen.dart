@@ -231,24 +231,14 @@ class _SplashScreenState extends State<SplashScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'SevenOath',
-                    textAlign: TextAlign.center,
-                    style: AppTheme.heading1.copyWith(
-                      fontSize: (screenWidth * 0.1).clamp(32, 48),
-                      letterSpacing: -0.5,
-                    ),
+                  // Logo image (bigger size)
+                  Image.asset(
+                    'assets/images/logo.png',
+                    width: (screenWidth * 0.4).clamp(120, 200),
+                    height: (screenWidth * 0.4).clamp(120, 200),
+                    fit: BoxFit.contain,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Vendor',
-                    textAlign: TextAlign.center,
-                    style: AppTheme.bodyLarge.copyWith(
-                      fontSize: (screenWidth * 0.045).clamp(16, 20),
-                      color: const Color(0xFF444242),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 48),
                   // Loading indicator
                   SizedBox(
                     width: 24,
