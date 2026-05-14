@@ -120,10 +120,36 @@ class AuthApi {
   }
 
   Future<BaseResponse<Object?>> createVendor(VendorCreateRequest req) async {
-    final res = await _dio.post(Endpoints.createVendors, data: req.toJson());
-    final decoded = res.data; // {status, code, message}
-    // data key नहीं है → BaseResponse data = null
-    return BaseResponse.fromJson(decoded, (json) => json);
+    try {
+      final res = await _dio.post(Endpoints.createVendors, data: req.toJson());
+      final decoded = res.data; // {status, code, message}
+      // data key नहीं है → BaseResponse data = null
+      return BaseResponse.fromJson(decoded, (json) => json);
+    } on DioException catch (e) {
+      // Extract error message from response
+      String errorMsg = e.message ?? 'Failed to create vendor';
+      if (e.response?.data is Map) {
+        final errorData = e.response!.data as Map<String, dynamic>;
+        if (errorData['message'] != null) {
+          errorMsg = errorData['message'].toString();
+        } else if (errorData['errors'] is Map) {
+          // Extract first field error if available
+          final errors = errorData['errors'] as Map<String, dynamic>;
+          if (errors.isNotEmpty) {
+            final firstError = errors.values.first;
+            if (firstError is List && firstError.isNotEmpty) {
+              errorMsg = firstError.first.toString();
+            } else {
+              errorMsg = firstError.toString();
+            }
+          }
+        }
+      }
+      throw ApiException(
+        errorMsg,
+        statusCode: e.response?.statusCode,
+      );
+    }
   }
 
 

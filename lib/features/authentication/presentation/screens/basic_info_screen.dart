@@ -161,22 +161,68 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
       _showMsg('Please upload business certificate');
       return;
     }
+    
+    // Validate required text fields
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      _showMsg('Please enter name');
+      return;
+    }
+    
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      _showMsg('Please enter email');
+      return;
+    }
+    if (!email.contains('@')) {
+      _showMsg('Please enter valid email');
+      return;
+    }
+    
+    final phone = (widget.phone ?? '').trim();
+    if (phone.isEmpty) {
+      _showMsg('Phone number is missing. Please logout and login again');
+      return;
+    }
+    
+    final adharNumber = _aadharController.text.trim();
+    if (adharNumber.isEmpty) {
+      _showMsg('Please enter Aadhar number');
+      return;
+    }
+    
+    final businessName = _businessNameController.text.trim();
+    if (businessName.isEmpty) {
+      _showMsg('Please enter business name');
+      return;
+    }
+    
+    final businessAddress = _businessAddressController.text.trim();
+    if (businessAddress.isEmpty) {
+      _showMsg('Please enter business address');
+      return;
+    }
+    
+    final businessDescription = _descriptionController.text.trim();
+    if (businessDescription.isEmpty) {
+      _showMsg('Please enter business description');
+      return;
+    }
 
     final priceRange = '₹${_minPrice.toStringAsFixed(0)} - ₹${_maxPrice.toStringAsFixed(0)}';
 
     final req = VendorCreateRequest(
-      name: _nameController.text.trim(),
-      phone: widget.phone, // <- Optional: fill from logged in user's phone if available
-      email: _emailController.text.trim(),
-      adharNumber: _aadharController.text.trim(),
-      businessName: _businessNameController.text.trim(),
-      businessCategory: _selectedCategory!.id, // Send category ID as per API
-
+      name: name,
+      phone: phone,
+      email: email,
+      adharNumber: adharNumber,
+      businessName: businessName,
+      businessCategory: _selectedCategory!.id,
       experienceInBusiness: int.tryParse(_experienceController.text.trim()) ?? 0,
       priceRange: priceRange,
       serviceCoverage: _coverageController.text.trim(),
-      businessAddress: _businessAddressController.text.trim(),
-      businessDescription: _descriptionController.text.trim(),
+      businessAddress: businessAddress,
+      businessDescription: businessDescription,
       benefits: _benefitsController.text.trim(),
       businessPhoto: _businessPhotoPath!,
       adharPhoto: _adharPhotoPath!,
